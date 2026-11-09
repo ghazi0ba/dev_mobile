@@ -31,6 +31,22 @@ flutter run
 
 Le fichier `android/local.properties` est créé automatiquement par Flutter au premier lancement. Il n'est **pas** versionné, car il contient des chemins propres à chaque machine.
 
+## Firebase
+
+Le projet est connecté au projet Firebase **`projetmobile-4csde2`**.
+
+- **Pour lancer l'app, rien à installer** : les fichiers de configuration (`lib/firebase_options.dart`, `android/app/google-services.json`, `firebase.json`) sont déjà dans le dépôt.
+- **Accès à la console** (base de données, utilisateurs…) : demandez à être ajouté au projet sur https://console.firebase.google.com.
+- **Ajouter un service Firebase** (ex. `firebase_auth`, `cloud_firestore`) : à faire par une seule personne, qui doit avoir installé [Node.js](https://nodejs.org), puis :
+```bash
+  npm install -g firebase-tools
+  firebase login
+  dart pub global activate flutterfire_cli
+  flutter pub add <paquet>
+  flutterfire configure --project=projetmobile-4csde2
+```
+Puis commiter les fichiers modifiés.
+
 ## Commandes utiles
 
 ```bash
@@ -48,3 +64,4 @@ flutter clean && flutter pub get   # si quelque chose casse après un pull
 - Ouvrez une Pull Request vers `main` et demandez une relecture.
 - Après avoir ajouté une dépendance avec `flutter pub add <paquet>`, commitez `pubspec.yaml` **et** `pubspec.lock`.
 - Ne commitez jamais de clés, de keystores (`*.jks`, `key.properties`) ni de fichiers `.env`.
+ 
