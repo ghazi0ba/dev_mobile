@@ -19,12 +19,13 @@ It runs entirely on Firebase (Authentication + Firestore), so there is no custom
 | Create an account (always as a client) | ✅ | | |
 | Sign in / reset a forgotten password | ✅ | | |
 | View own profile | | ✅ | ✅ |
-| Edit own name, phone, address | | ✅ | ✅ |
+| Edit own first name, last name, phone, address | | ✅ | ✅ |
+| Add / change / remove own profile photo | | ✅ | ✅ |
 | Change own password / email | | ✅ | ✅ |
 | Delete own account | | ✅ | ✅ |
 | Sign out | | ✅ | ✅ |
 | List, search and filter all users | | | ✅ |
-| Edit any user's name, phone, address | | | ✅ |
+| Edit any user's names, phone, address, photo | | | ✅ |
 | Change a user's role (client ⇄ admin) | | | ✅ (not their own) |
 | Disable / re-enable an account | | | ✅ (not their own) |
 | Send a password-reset email to a user | | | ✅ |
@@ -71,8 +72,18 @@ final user = CurrentUser.of(context);       // AppUser (throws if nobody is sign
 final maybe = CurrentUser.maybeOf(context); // AppUser? (null if signed out)
 
 user.id        // use as userId in orders, reviews, carts/{user.id}
-user.fullName  // e.g. userName in a review
+user.firstName // "Nadia"
+user.lastName  // "Benali"
+user.fullName  // "Nadia Benali" (computed), e.g. userName in a review
 user.isAdmin   // show/hide admin-only buttons
+```
+
+To show someone's avatar (photo, or initials if there is none):
+
+```dart
+import 'package:dev_mobile/features/utilisateurs/widgets/user_avatar.dart';
+
+UserAvatar(user: user, radius: 20)
 ```
 
 The widget rebuilds automatically when the profile changes, for example after the user renames themselves.
@@ -88,11 +99,14 @@ The widget rebuilds automatically when the profile changes, for example after th
 | Field | Type | Notes |
 |---|---|---|
 | `email` | string | Copy of the login email (kept in sync, see §6.3) |
-| `fullName` | string | Required, at least 2 characters |
+| `firstName` | string | First name (prénom). Required |
+| `lastName` | string | Last name (nom). Required |
+| `fullName` | string | `"firstName lastName"`, rewritten on every save. Handy in the console and for other modules; never edit it by hand |
 | `role` | `"client"` \| `"admin"` | Sign-up always gives `client` |
 | `phone` | string \| null | Optional. Empty fields are stored as `null` |
 | `address` | string \| null | Optional delivery address |
-| `photoUrl` | string \| null | Not used yet (avatars show initials) |
+| `photoUrl` | string \| null | Profile photo on Cloudinary (`https://res.cloudinary.com/...`). `null` = show initials |
+| `photoPublicId` | string \| null | Cloudinary id of the photo (kept so it can be deleted later) |
 | `createdAt` | timestamp | Set by the server (`FieldValue.serverTimestamp()`) |
 | `disabled` | bool | `true` = blocked by an admin |
 
@@ -101,8 +115,10 @@ The widget rebuilds automatically when the profile changes, for example after th
 `AppUser` in `lib/shared/models/models.dart` provides:
 
 - `fromMap(id, map)` and `toMap()` to convert to and from Firestore
-- `isAdmin`
+- `fullName` (computed), `isAdmin`, `hasPhoto`
 - `copyWith(...)`
+
+**Older documents** that only have `fullName` still load: `fromMap` splits it into a first name (first word) and a last name (the rest). Saving the profile once writes the new fields.
 
 Passwords are **never** stored in Firestore. Firebase Authentication handles them.
 
@@ -120,7 +136,8 @@ lib/features/utilisateurs/
 │   └── auth_errors.dart       Firebase error codes → French messages
 ├── widgets/
 │   ├── current_user_scope.dart  SessionScope + CurrentUser (signed-in user everywhere)
-│   ├── user_avatar.dart         Initials avatar, RoleBadge, AccountStatusBadge
+│   ├── user_avatar.dart         Avatar (photo or initials), RoleBadge, AccountStatusBadge
+│   ├── editable_avatar.dart     Tappable avatar: camera / gallery / remove photo
 │   ├── user_filter_sheet.dart   "Filtres avancés" bottom sheet
 │   └── form_helpers.dart        Validators, BusyButton, ErrorBanner, PasswordField,
 │                                askPassword dialog, formatDate, showMessage
@@ -138,7 +155,14 @@ lib/features/utilisateurs/
         └── create_user_screen.dart  Create a client or admin account
 ```
 
-The **services** are the only files that talk to Firebase. Screens call the services and show the results.
+Shared with other modules:
+
+```
+lib/core/services/cloudinary_service.dart   Image upload to Cloudinary + thumbnail URLs
+                                            (Produits can reuse it for product images)
+```
+
+The **services** are the only files that talk to Firebase or Cloudinary. Screens call the services and show the results.
 
 ---
 
@@ -177,7 +201,27 @@ There's a confirmation dialog, then a password prompt. The app then:
 
 The profile goes first because, once the login is deleted, the app no longer has permission to delete the document. Past orders and reviews keep their `userId`, since the shop still needs those records.
 
-### 6.5 Admin: creating an account
+### 6.5 Profile photo (Cloudinary)
+
+**Where:** tap the avatar (camera badge) on **My profile**, or on a user's page as an admin.
+
+1. A menu offers **Prendre une photo**, **Choisir dans la galerie**, and **Supprimer la photo** (if there is one).
+2. `image_picker` returns the image already shrunk to at most 1024×1024 at 85 % quality, so it uploads faster and uses less data.
+3. `CloudinaryService.uploadImage` sends it to Cloudinary using an **unsigned upload preset**, so no secret key is in the app. Images go to the `cosmaplus/users` folder.
+4. Cloudinary returns a `secure_url` and a `public_id`, which are saved in `users/{uid}` (`photoUrl`, `photoPublicId`).
+5. The live session updates, and every avatar in the app shows the new photo.
+
+**Displaying photos:** `UserAvatar` asks Cloudinary for a small square version centred on the face (`c_fill,g_face,w_…,h_…,q_auto,f_auto`, built by `cloudinaryThumbnail`). This keeps lists fast.
+
+**Initials as a fallback:** the initials (first letter of the first name + first letter of the last name, e.g. `NB`) are always drawn underneath the photo. You see them when:
+- the user never uploaded a photo
+- the photo was removed
+- the photo is still loading
+- the photo can't load (no network, deleted image)
+
+**Removing** a photo sets `photoUrl` to `null`, and the initials appear again.
+
+### 6.6 Admin: creating an account
 
 Creating a user with the normal Firebase instance would **sign the admin out** and sign the new user in. To avoid that, `AuthService` starts a **second, hidden Firebase app** (`adminUserCreation`):
 
@@ -205,10 +249,10 @@ The admin can re-enable the account at any time.
 
 | Feature | Details |
 |---|---|
-| **Search bar** | Searches name, email, phone and address at the same time. Ignores case and accents (`eric` finds `Éric`). Several words must **all** match (`nadia tunis`). Phone numbers match with or without spaces (`0612` finds `06 12 34 56 78`). |
+| **Search bar** | Searches first name, last name, email, phone and address at the same time. Ignores case and accents (`eric` finds `Éric`). Several words must **all** match, in any order (`martin eric`, `nadia tunis`). Phone numbers match with or without spaces (`0612` finds `06 12 34 56 78`). |
 | **Role chips** | Tous / Clients / Admins, each with a count |
 | **Status chips** | Actifs / Désactivés, each with a count. Tap again to turn off. |
-| **Advanced filters** (⚙ button, the badge shows how many are on) | **Sort:** name A→Z / Z→A, newest, oldest, email. **Profile:** complete / no phone / no address. **Sign-up date:** a date range (both ends included). |
+| **Advanced filters** (⚙ button, the badge shows how many are on) | **Sort:** last name A→Z (default) / Z→A, first name A→Z, newest, oldest, email. **Profile:** complete / no phone / no address / with photo / without photo. **Sign-up date:** a date range (both ends included). |
 | **Active filter chips** | Each advanced filter shows as a chip you can remove with ✕ |
 | **Result bar** | "12 sur 40 utilisateurs" + **Réinitialiser** |
 | **Empty state** | Message plus a button to reset the filters |
@@ -229,6 +273,7 @@ The rules are the real protection. Hiding a button in the app isn't enough, beca
 | `isSelf(uid)` | The document belongs to the signed-in user |
 | `isActive()` | Signed in, has a profile, and `disabled` is not `true` |
 | `isAdmin()` | Active **and** `role == 'admin'` |
+| `validPhoto()` | `photoUrl` is missing/`null` or starts with `https://res.cloudinary.com/`. This stops anyone from pointing their avatar at an arbitrary website. |
 
 **Rules on `users/{uid}`:**
 
@@ -238,6 +283,8 @@ The rules are the real protection. Hiding a button in the app isn't enough, beca
 | create | an admin (any role), or the user themselves **only** with `role: client` and `disabled: false` |
 | update | an admin (anything), or the user themselves if active **and** not touching `role`, `disabled` or `createdAt` |
 | delete | the user themselves, or an admin |
+
+Every create and update must also pass `validPhoto()`.
 
 As a result, a client cannot make themselves admin, re-enable their own account, or read other people's profiles.
 
@@ -249,7 +296,9 @@ The other collections (`products`, `orders`, `carts`, `reviews`, `categories`) h
 
 ---
 
-## 9. Setup (one time, Firebase console)
+## 9. Setup (one time)
+
+### Firebase console
 
 1. **Authentication → Sign-in method:** enable **Email/Password**.
 2. **Firestore Database:** create it if it doesn't exist.
@@ -257,12 +306,28 @@ The other collections (`products`, `orders`, `carts`, `reviews`, `categories`) h
 4. **First admin:** sign up in the app, then in Firestore open `users/{your uid}` and set `role` to `"admin"`. After that, admins can promote others from the app.
 5. *(Optional)* **Authentication → Templates:** translate the reset and verification emails into French.
 
+### Cloudinary (profile photos)
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com). The **Cloud name** is shown on the dashboard.
+2. Go to **Settings → Upload → Upload presets → Add upload preset**:
+   - **Signing mode:** **Unsigned** (required: the app has no secret key)
+   - **Folder:** `cosmaplus` *(optional)*
+   - Recommended restrictions: allowed formats `jpg, png, webp, heic`, max file size around 5 MB
+3. Put the two values in `CloudinaryConfig` (`lib/core/services/cloudinary_service.dart`):
+   ```dart
+   static const cloudName = 'your-cloud-name';
+   static const uploadPreset = 'your-unsigned-preset';
+   ```
+   These two values aren't secret. **Never** put the Cloudinary *API Secret* in the app.
+
+Until this is done, trying to upload a photo shows "Cloudinary n'est pas configuré", and avatars keep showing initials.
+
 ---
 
 ## 10. Developing and testing
 
 - **Dev mode** (debug builds only): the link under the login form opens `DevLauncher` to browse the admin or client area without signing in. Firestore will refuse reads in this mode, so to test with real data, sign in with a test account.
-- **Tests:** `test/utilisateurs_test.dart` covers the `AppUser` model, initials, validators, error messages and every search, filter and sort case. Run them with:
+- **Tests:** `test/utilisateurs_test.dart` covers the `AppUser` model (including old `fullName`-only documents), initials, Cloudinary thumbnail URLs, validators, error messages and every search, filter and sort case. Run them with:
   ```bash
   flutter test
   ```
@@ -281,12 +346,17 @@ The other collections (`products`, `orders`, `carts`, `reviews`, `categories`) h
 | "Trop de tentatives…" | Firebase temporarily blocked repeated failures. Wait a few minutes. |
 | "Profil introuvable" screen | The `users/{uid}` document is missing and couldn't be created. Check the connection and the rules, then sign in again. |
 | Admin list empty or showing an error | The rules weren't deployed, or your profile doesn't have `role: "admin"`. |
+| "Cloudinary n'est pas configuré…" | Fill in `CloudinaryConfig` (section 9). |
+| "Échec de l'envoi de l'image : Upload preset not found / must be whitelisted for unsigned uploads" | Wrong preset name, or the preset isn't **Unsigned**. |
+| "Accès refusé. Autorisez l'appareil photo…" | Camera or photo permission was denied. Allow it in the phone settings. |
+| Photo uploaded but initials still shown | The image can't load (network), or the rules rejected the URL. Check `photoUrl` in Firestore. |
 
 ---
 
 ## 12. Known limitations
 
 - **Disabling doesn't remove the login.** A disabled user's login still exists, but the app and the rules block them. A full delete would need Cloud Functions (the paid Blaze plan).
-- **No profile photos.** Avatars show initials because Firebase Storage needs the Blaze plan. The `photoUrl` field is ready for later.
+- **Old photos stay on Cloudinary.** Deleting an image from Cloudinary needs the API Secret, which can't be put in the app. So when a photo is replaced or removed (or an account is deleted), the old file stays in the Cloudinary media library. `photoPublicId` is stored so a cleanup script or a future backend can delete them. The free plan's storage is large enough for a school project.
+- **Uploads aren't tied to a logged-in user.** An unsigned preset accepts uploads from anyone who knows the preset name. Limit the risk with the preset restrictions (formats, size). The Firestore rules still only accept Cloudinary URLs.
 - **Date picker in English.** The month names come out in English until `flutter_localizations` is added to the project.
 - **Whole collection loaded.** The admin list loads every user, which is fine for a shop's size. With thousands of users it would need paging and server-side queries.

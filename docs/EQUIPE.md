@@ -64,7 +64,9 @@ Les modèles Dart correspondants sont dans `lib/shared/models/models.dart`.
 
 ```
 users/{uid}
-  email, fullName, role ("client" | "admin"), phone, address, photoUrl, createdAt,
+  email, firstName, lastName, fullName (copie "Prénom Nom", calculée),
+  role ("client" | "admin"), phone, address, createdAt,
+  photoUrl (Cloudinary, null = initiales), photoPublicId,
   disabled (bool : compte désactivé par un admin)
 
 categories/{id}
@@ -112,6 +114,12 @@ final maybe = CurrentUser.maybeOf(context); // null si personne n'est connecté
 ```
 
 Utilisez `user.id` comme `userId` (commandes, avis, panier `carts/{user.id}`).
+Avatar (photo ou initiales) : `UserAvatar(user: user)` dans `features/utilisateurs/widgets/user_avatar.dart`.
+
+**Images (Cloudinary)** : `CloudinaryService.instance.uploadImage(bytes, folder: 'cosmaplus/products')`
+dans `lib/core/services/cloudinary_service.dart` retourne l'URL à enregistrer (ex. `imageUrl` d'un produit).
+Configuration (cloud name + preset non signé) : voir `docs/UTILISATEURS.md`, section 9.
+Détails complets du module Utilisateurs : `docs/UTILISATEURS.md`.
 
 **Comptes de test** : créez un compte depuis l'écran « Créer un compte ». Pour devenir admin,
 mettez `role: "admin"` sur votre document `users/{uid}` dans la console Firestore
