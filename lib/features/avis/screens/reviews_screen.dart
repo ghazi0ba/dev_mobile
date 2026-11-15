@@ -1,27 +1,209 @@
 import 'package:flutter/material.dart';
-
 import 'package:dev_mobile/core/widgets/widgets.dart';
+import 'package:dev_mobile/features/avis/screens/add_review_screen.dart';
+import 'package:dev_mobile/features/avis/screens/edit_review_screen.dart';
+import 'package:dev_mobile/features/avis/services/services.dart';
+import 'package:dev_mobile/features/avis/widgets/widgets.dart';
+import 'package:dev_mobile/shared/models/models.dart';
 
-/// Écran d'entrée du module Avis.
-/// Remplacez le contenu de [body] par vos propres écrans.
-class ReviewsScreen extends StatelessWidget {
+class ReviewsScreen extends StatefulWidget {
   const ReviewsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppHeader(subtitle: 'Avis'),
-      body: ModulePlaceholder(
-        module: 'Avis',
-        icon: Icons.star_outline_rounded,
-        todo: [
-          'Widget « avis d\'un produit » à intégrer dans la fiche produit',
-          'Client : laisser une note (1–5) et un commentaire',
-          'Un seul avis par client et par produit',
-          'Mettre à jour ratingAverage / ratingCount du produit',
-          'Admin : modérer (supprimer) les avis',
-        ],
+  State<ReviewsScreen> createState() => _ReviewsScreenState();
+}
+
+class _ReviewsScreenState extends State<ReviewsScreen> {
+  final String _testUserId = 'test-user';
+  final String _testUserName = 'Utilisateur Test';
+
+  Future<void> _openAddReview(Product product) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddReviewScreen(
+          productId: product.id,
+          productName: product.name,
+          userId: _testUserId,
+          userName: _testUserName,
+        ),
       ),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Avis ajouté')),
+      );
+    }
+  }
+
+  Future<void> _openEditReview(Review review) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditReviewScreen(
+          review: review,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Avis modifié')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+
+    return Scaffold(
+      appBar: const AppHeader(subtitle: 'Avis'),
+      body: StreamBuilder<List<Review>>(
+        stream: ReviewService.watchReviewsByProduct('test-product'),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'Erreur de chargement',
+                    style: text.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    snapshot.error.toString(),
+                    style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final reviews = snapshot.data ?? [];
+
+          return ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              SectionCard(
+                title: 'Tous les avis',
+                icon: Icons.star_outline_rounded,
+                child: Column(
+                  children: [
+                    if (reviews.isEmpty)
+                      Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.star_outline_rounded,
+                              size: 64,
+                              color: AppColors.textHint,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Aucun avis pour le moment',
+                              style: text.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ReviewCardList(
+                        reviews: reviews,
+                        onEdit: (review) => _openEditReview(review),
+                        onDelete: (review) => _openEditReview(review),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SectionCard(
+                title: 'Tester l\'ajout d\'avis',
+                icon: Icons.add_circle_outline,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sélectionnez un produit pour tester l\'ajout d\'avis :',
+                      style: text.bodyMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        _TestProductChip(
+                          label: 'Sérum Vitamine C',
+                          productId: 'test-product-1',
+                          onTap: () => _openAddReview(Product(
+                            id: 'test-product-1',
+                            name: 'Sérum Vitamine C',
+                            price: 29.90,
+                            stock: 10,
+                            categoryId: 'cat-1',
+                          )),
+                        ),
+                        _TestProductChip(
+                          label: 'Crème Hydratante',
+                          productId: 'test-product-2',
+                          onTap: () => _openAddReview(Product(
+                            id: 'test-product-2',
+                            name: 'Crème Hydratante',
+                            price: 24.50,
+                            stock: 15,
+                            categoryId: 'cat-1',
+                          )),
+                        ),
+                        _TestProductChip(
+                          label: 'Huile Visage Bio',
+                          productId: 'test-product-3',
+                          onTap: () => _openAddReview(Product(
+                            id: 'test-product-3',
+                            name: 'Huile Visage Bio',
+                            price: 34.90,
+                            stock: 8,
+                            categoryId: 'cat-1',
+                          )),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TestProductChip extends StatelessWidget {
+  const _TestProductChip({
+    required this.label,
+    required this.productId,
+    required this.onTap,
+  });
+
+  final String label;
+  final String productId;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: onTap,
+      avatar: const Icon(Icons.add_circle_outline, size: 18),
     );
   }
 }
