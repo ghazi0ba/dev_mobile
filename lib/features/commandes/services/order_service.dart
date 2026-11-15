@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:dev_mobile/features/panier/services/cart_service.dart';
 import 'package:dev_mobile/shared/models/models.dart';
 
 import 'order_rules.dart';
@@ -153,11 +154,8 @@ class OrderService {
 
     if (clearCart) {
       try {
-        final batch = _db.batch();
-        for (final line in lines) {
-          batch.delete(_cartItems(customer.id).doc(line.product.id));
-        }
-        await batch.commit();
+        await CartService.instance
+            .removeOrdered(customer, lines.map((l) => l.product.id));
       } catch (_) {
         // La commande est passée : un panier non vidé n'est pas bloquant.
       }
@@ -269,26 +267,6 @@ class OrderService {
 
     if (problem != null) throw OrderException(problem);
   }
-
-  // ─── Outil de test (mode debug) ───────────────────────────────────────────
-
-  /// Remplit le panier avec quelques produits en stock (1 unité chacun),
-  /// pour tester les commandes avant que le module Panier soit prêt.
-  Future<int> fillTestCart(String uid, {int count = 3}) => _guard(() async {
-        final products = await _products
-            .where('stock', isGreaterThan: 0)
-            .limit(count)
-            .get();
-        final batch = _db.batch();
-        for (final p in products.docs) {
-          batch.set(_cartItems(uid).doc(p.id), {
-            'quantity': 1,
-            'addedAt': FieldValue.serverTimestamp(),
-          });
-        }
-        await batch.commit();
-        return products.docs.length;
-      });
 
   // ─── Utilitaires ──────────────────────────────────────────────────────────
 

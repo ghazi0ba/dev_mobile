@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dev_mobile/core/widgets/widgets.dart';
+import 'package:dev_mobile/features/panier/services/cart_service.dart';
 import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
 import 'package:dev_mobile/shared/models/models.dart';
 
@@ -40,12 +41,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     setState(() => _filling = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final n = await OrderService.instance.fillTestCart(_uid!);
+      final n = await CartService.instance.fillTestCart(CurrentUser.of(context));
       messenger.showSnackBar(SnackBar(
           content: Text(n == 0
               ? 'Aucun produit en stock dans Firestore.'
               : '$n produit(s) ajouté(s) au panier de test.')));
-    } on OrderException catch (e) {
+    } on CartException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       if (mounted) setState(() => _filling = false);
