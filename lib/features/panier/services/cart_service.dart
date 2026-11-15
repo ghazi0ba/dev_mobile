@@ -42,7 +42,8 @@ class CartService {
 
   /// Nombre total d'unités dans le panier (pour un badge).
   Stream<int> watchItemCount(String uid) => _items(uid).snapshots().map(
-        (q) => q.docs.fold(0, (sum, d) => sum + _toInt(d.data()['quantity'])),
+        (q) => q.docs.fold<int>(
+        0, (int total, doc) => total + _toInt(doc.data()['quantity'])),
       );
 
   Future<List<CartLine>> _withProducts(
