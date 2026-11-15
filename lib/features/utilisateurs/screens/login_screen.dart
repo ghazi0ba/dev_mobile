@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dev_mobile/core/widgets/widgets.dart';
+import 'package:dev_mobile/features/produits/services/product_service.dart';
 
 /// Écran de connexion (maquette "Espace Admin").
 /// Module Utilisateurs : brancher Firebase Auth dans [_submit].
@@ -20,6 +23,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _remember = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (FirebaseAuth.instance.currentUser != null) {
+      _busy = true;
+    }
+    _restoreSession();
+  }
 
   @override
   void dispose() {
@@ -28,10 +41,98 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    // TODO(module Utilisateurs) : FirebaseAuth.instance.signInWithEmailAndPassword(...)
+  Future<void> _restoreSession() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final failure = await _adminFailure(user.uid);
+      if (failure != null) {
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
+      if (!mounted) return;
+      await _enter();
+    } catch (e) {
+      _showError('$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_busy || !_formKey.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        throw FirebaseAuthException(code: 'no-user', message: 'Session vide');
+      }
+      final failure = await _adminFailure(uid);
+      if (failure != null) {
+        await FirebaseAuth.instance.signOut();
+        _showError(failure);
+        return;
+      }
+      await _enter();
+    } on FirebaseAuthException catch (e) {
+      _showError(_authMessage(e));
+    } catch (e) {
+      _showError('$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Null when `users/{uid}` is an active admin. Firestore rules grant
+  /// product and category writes only in that case.
+  Future<String?> _adminFailure(String uid) async {
+    final profile =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = profile.data();
+    if (!profile.exists || data?['role'] != 'admin') {
+      return 'Ce compte n\'est pas administrateur. '
+          'Le document users/$uid doit contenir role: "admin".';
+    }
+    if (data?['disabled'] == true) {
+      return 'Ce compte administrateur est désactivé.';
+    }
+    return null;
+  }
+
+  Future<void> _enter() async {
+    await ProductService().seedDefaultCategories();
+    if (!mounted) return;
     widget.onLoggedIn?.call();
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String _authMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'Email invalide';
+      case 'invalid-credential':
+      case 'wrong-password':
+      case 'user-not-found':
+        return 'Email ou mot de passe incorrect';
+      case 'user-disabled':
+        return 'Ce compte est désactivé';
+      case 'too-many-requests':
+        return 'Trop de tentatives. Réessayez plus tard';
+      case 'network-request-failed':
+        return 'Pas de connexion réseau';
+      default:
+        return e.message ?? 'Connexion impossible (${e.code})';
+    }
   }
 
   @override
@@ -132,15 +233,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FilledButton(
-                          onPressed: _submit,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('Se connecter'),
-                              SizedBox(width: AppSpacing.sm),
-                              Icon(Icons.arrow_forward, size: 18),
-                            ],
-                          ),
+                          onPressed: _busy ? null : _submit,
+                          child: _busy
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Se connecter'),
+                                    SizedBox(width: AppSpacing.sm),
+                                    Icon(Icons.arrow_forward, size: 18),
+                                  ],
+                                ),
                         ),
                       ],
                     ),

@@ -44,25 +44,25 @@ class AppUser {
   bool get isAdmin => role == UserRole.admin;
 
   factory AppUser.fromMap(String id, Map<String, dynamic> map) => AppUser(
-        id: id,
-        email: map['email'] as String? ?? '',
-        fullName: map['fullName'] as String? ?? '',
-        role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
-        phone: map['phone'] as String?,
-        address: map['address'] as String?,
-        photoUrl: map['photoUrl'] as String?,
-        createdAt: _toDate(map['createdAt']),
-      );
+    id: id,
+    email: map['email'] as String? ?? '',
+    fullName: map['fullName'] as String? ?? '',
+    role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
+    phone: map['phone'] as String?,
+    address: map['address'] as String?,
+    photoUrl: map['photoUrl'] as String?,
+    createdAt: _toDate(map['createdAt']),
+  );
 
   Map<String, dynamic> toMap() => {
-        'email': email,
-        'fullName': fullName,
-        'role': role.name,
-        'phone': phone,
-        'address': address,
-        'photoUrl': photoUrl,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'email': email,
+    'fullName': fullName,
+    'role': role.name,
+    'phone': phone,
+    'address': address,
+    'photoUrl': photoUrl,
+    'createdAt': createdAt ?? DateTime.now(),
+  };
 }
 
 // ─── Produits & catégories (propriétaire : module Produits) ─────────────────
@@ -105,62 +105,100 @@ class Product {
     this.createdAt,
   });
 
-  final String id;
-  final String name;
-  final double price; // en euros
-  final int stock; // unités disponibles
-  final String categoryId;
-  final String sku; // ex. SKU-8402
-  final String brand;
-  final String description;
-  final String composition;
-  final String volume; // ex. "30 ml"
-  final String? imageUrl;
-  final List<String> labels; // "bio", "vegan", "naturel"
-  final double ratingAverage; // mis à jour par le module Avis
-  final int ratingCount;
-  final DateTime? createdAt;
+  final String id; // Firestore document ID (not stored inside the document)
+  final String name; // Required
+  final double price; // Required (en euros)
+  final int stock; // Required (unités disponibles)
+  final String categoryId; // Required (ID of a document in categories)
+  final String sku; // Optional, ex. "SKU-8402", default ""
+  final String brand; // Optional, brand name as text, e.g. "Aura Botanica"
+  final String description; // Optional
+  final String composition; // Optional (ingredients)
+  final String volume; // Optional, ex. "30 ml"
+  final String? imageUrl; // Optional (Image URL from Cloudinary), can be empty
+  final List<String> labels; // Optional, ["bio", "vegan", "naturel"]
+  final double ratingAverage; // Average rating, updated by Avis module
+  final int ratingCount; // Number of reviews
+  final DateTime? createdAt; // Creation date
 
   /// Seuil sous lequel le stock est "en alerte".
   static const lowStockThreshold = 10;
 
   bool get inStock => stock > 0;
   bool get lowStock => stock > 0 && stock <= lowStockThreshold;
+  bool get isOutOfStock => stock == 0;
 
   factory Product.fromMap(String id, Map<String, dynamic> map) => Product(
-        id: id,
-        name: map['name'] as String? ?? '',
-        price: _toDouble(map['price']),
-        stock: _toInt(map['stock']),
-        categoryId: map['categoryId'] as String? ?? '',
-        sku: map['sku'] as String? ?? '',
-        brand: map['brand'] as String? ?? '',
-        description: map['description'] as String? ?? '',
-        composition: map['composition'] as String? ?? '',
-        volume: map['volume'] as String? ?? '',
-        imageUrl: map['imageUrl'] as String?,
-        labels: List<String>.from(map['labels'] as List? ?? const []),
-        ratingAverage: _toDouble(map['ratingAverage']),
-        ratingCount: _toInt(map['ratingCount']),
-        createdAt: _toDate(map['createdAt']),
-      );
+    id: id,
+    name: map['name'] as String? ?? '',
+    price: _toDouble(map['price']),
+    stock: _toInt(map['stock']),
+    categoryId: map['categoryId'] as String? ?? '',
+    sku: map['sku'] as String? ?? '',
+    brand: map['brand'] as String? ?? '',
+    description: map['description'] as String? ?? '',
+    composition: map['composition'] as String? ?? '',
+    volume: map['volume'] as String? ?? '',
+    imageUrl: map['imageUrl'] as String?,
+    labels: List<String>.from(map['labels'] as List? ?? const []),
+    ratingAverage: _toDouble(map['ratingAverage']),
+    ratingCount: _toInt(map['ratingCount']),
+    createdAt: _toDate(map['createdAt']),
+  );
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'price': price,
-        'stock': stock,
-        'categoryId': categoryId,
-        'sku': sku,
-        'brand': brand,
-        'description': description,
-        'composition': composition,
-        'volume': volume,
-        'imageUrl': imageUrl,
-        'labels': labels,
-        'ratingAverage': ratingAverage,
-        'ratingCount': ratingCount,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'name': name,
+    'price': price,
+    'stock': stock,
+    'categoryId': categoryId,
+    'sku': sku,
+    'brand': brand,
+    'description': description,
+    'composition': composition,
+    'volume': volume,
+    'imageUrl': imageUrl,
+    'labels': labels,
+    'ratingAverage': ratingAverage,
+    'ratingCount': ratingCount,
+    'createdAt': createdAt ?? DateTime.now(),
+  };
+
+  /// Create a copy with updated fields
+  Product copyWith({
+    String? id,
+    String? name,
+    double? price,
+    int? stock,
+    String? categoryId,
+    String? sku,
+    String? brand,
+    String? description,
+    String? composition,
+    String? volume,
+    String? imageUrl,
+    List<String>? labels,
+    double? ratingAverage,
+    int? ratingCount,
+    DateTime? createdAt,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      stock: stock ?? this.stock,
+      categoryId: categoryId ?? this.categoryId,
+      sku: sku ?? this.sku,
+      brand: brand ?? this.brand,
+      description: description ?? this.description,
+      composition: composition ?? this.composition,
+      volume: volume ?? this.volume,
+      imageUrl: imageUrl ?? this.imageUrl,
+      labels: labels ?? this.labels,
+      ratingAverage: ratingAverage ?? this.ratingAverage,
+      ratingCount: ratingCount ?? this.ratingCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 // ─── Panier (propriétaire : module Panier) ──────────────────────────────────
@@ -186,9 +224,9 @@ class CartItem {
       );
 
   Map<String, dynamic> toMap() => {
-        'quantity': quantity,
-        'addedAt': addedAt ?? DateTime.now(),
-      };
+    'quantity': quantity,
+    'addedAt': addedAt ?? DateTime.now(),
+  };
 }
 
 // ─── Commandes (propriétaire : module Commandes) ────────────────────────────
@@ -197,12 +235,12 @@ enum OrderStatus { enAttente, confirmee, expediee, livree, annulee }
 
 extension OrderStatusLabel on OrderStatus {
   String get label => switch (this) {
-        OrderStatus.enAttente => 'En attente',
-        OrderStatus.confirmee => 'Confirmée',
-        OrderStatus.expediee => 'Expédiée',
-        OrderStatus.livree => 'Livrée',
-        OrderStatus.annulee => 'Annulée',
-      };
+    OrderStatus.enAttente => 'En attente',
+    OrderStatus.confirmee => 'Confirmée',
+    OrderStatus.expediee => 'Expédiée',
+    OrderStatus.livree => 'Livrée',
+    OrderStatus.annulee => 'Annulée',
+  };
 }
 
 /// Ligne de commande : copie du produit au moment de l'achat
@@ -225,20 +263,20 @@ class OrderLine {
   double get total => unitPrice * quantity;
 
   factory OrderLine.fromMap(Map<String, dynamic> map) => OrderLine(
-        productId: map['productId'] as String? ?? '',
-        name: map['name'] as String? ?? '',
-        unitPrice: _toDouble(map['unitPrice']),
-        quantity: _toInt(map['quantity']),
-        imageUrl: map['imageUrl'] as String?,
-      );
+    productId: map['productId'] as String? ?? '',
+    name: map['name'] as String? ?? '',
+    unitPrice: _toDouble(map['unitPrice']),
+    quantity: _toInt(map['quantity']),
+    imageUrl: map['imageUrl'] as String?,
+  );
 
   Map<String, dynamic> toMap() => {
-        'productId': productId,
-        'name': name,
-        'unitPrice': unitPrice,
-        'quantity': quantity,
-        'imageUrl': imageUrl,
-      };
+    'productId': productId,
+    'name': name,
+    'unitPrice': unitPrice,
+    'quantity': quantity,
+    'imageUrl': imageUrl,
+  };
 }
 
 /// Collection `orders/{id}`.
@@ -281,14 +319,14 @@ class CustomerOrder {
       );
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'lines': lines.map((l) => l.toMap()).toList(),
-        'total': total,
-        'shippingAddress': shippingAddress,
-        'status': status.name,
-        'paymentMethod': paymentMethod,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'userId': userId,
+    'lines': lines.map((l) => l.toMap()).toList(),
+    'total': total,
+    'shippingAddress': shippingAddress,
+    'status': status.name,
+    'paymentMethod': paymentMethod,
+    'createdAt': createdAt ?? DateTime.now(),
+  };
 }
 
 // ─── Avis (propriétaire : module Avis) ──────────────────────────────────────
@@ -314,21 +352,21 @@ class Review {
   final DateTime? createdAt;
 
   factory Review.fromMap(String id, Map<String, dynamic> map) => Review(
-        id: id,
-        productId: map['productId'] as String? ?? '',
-        userId: map['userId'] as String? ?? '',
-        userName: map['userName'] as String? ?? '',
-        rating: _toInt(map['rating']),
-        comment: map['comment'] as String? ?? '',
-        createdAt: _toDate(map['createdAt']),
-      );
+    id: id,
+    productId: map['productId'] as String? ?? '',
+    userId: map['userId'] as String? ?? '',
+    userName: map['userName'] as String? ?? '',
+    rating: _toInt(map['rating']),
+    comment: map['comment'] as String? ?? '',
+    createdAt: _toDate(map['createdAt']),
+  );
 
   Map<String, dynamic> toMap() => {
-        'productId': productId,
-        'userId': userId,
-        'userName': userName,
-        'rating': rating,
-        'comment': comment,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'productId': productId,
+    'userId': userId,
+    'userName': userName,
+    'rating': rating,
+    'comment': comment,
+    'createdAt': createdAt ?? DateTime.now(),
+  };
 }
