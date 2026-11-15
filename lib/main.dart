@@ -1,8 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'app/dev_launcher.dart';
 import 'core/theme/app_theme.dart';
+import 'features/utilisateurs/screens/auth_gate.dart';
+import 'features/utilisateurs/widgets/current_user_scope.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -18,12 +19,17 @@ class CosmaPlusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CosmaPlus',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      // TODO(module Utilisateurs) : remplacer DevLauncher par l'AuthGate.
-      home: const DevLauncher(),
+    // SessionScope au-dessus de MaterialApp : CurrentUser.of(context)
+    // fonctionne dans tous les écrans, y compris ceux ouverts avec push().
+    return SessionScope(
+      child: MaterialApp(
+        title: 'CosmaPlus',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        // Connexion → espace admin ou client selon le rôle.
+        // En debug, l'écran de connexion propose aussi le "Mode développement".
+        home: const AuthGate(),
+      ),
     );
   }
 }

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:dev_mobile/app/shells.dart';
 import 'package:dev_mobile/core/widgets/widgets.dart';
-import 'package:dev_mobile/features/utilisateurs/screens/login_screen.dart';
 
 /// ÉCRAN TEMPORAIRE pour le développement.
 /// Permet à chacun d'ouvrir l'espace admin ou client sans connexion.
-/// Le module Utilisateurs le remplacera par un AuthGate (redirection selon le rôle).
+/// Accessible en debug depuis l'écran de connexion ("Mode développement").
+/// Sans connexion, Firestore refusera les lectures protégées par les règles :
+/// pour tester avec des données, connectez-vous avec un compte de test.
 class DevLauncher extends StatelessWidget {
   const DevLauncher({super.key});
 
@@ -17,7 +18,7 @@ class DevLauncher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppHeader(subtitle: 'Mode développement'),
+      appBar: const AppHeader(subtitle: 'Mode développement', showBack: true),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -33,19 +34,6 @@ class DevLauncher extends StatelessWidget {
             onPressed: () => _open(context, const ClientShell()),
             icon: const Icon(Icons.storefront_outlined),
             label: const Text('Espace Client'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () => _open(
-              context,
-              LoginScreen(
-                onLoggedIn: () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const AdminShell()),
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.login),
-            label: const Text('Écran de connexion'),
           ),
         ],
       ),

@@ -64,7 +64,8 @@ Les modèles Dart correspondants sont dans `lib/shared/models/models.dart`.
 
 ```
 users/{uid}
-  email, fullName, role ("client" | "admin"), phone, address, photoUrl, createdAt
+  email, fullName, role ("client" | "admin"), phone, address, photoUrl, createdAt,
+  disabled (bool : compte désactivé par un admin)
 
 categories/{id}
   name, imageUrl
@@ -95,9 +96,34 @@ Mettez-vous d'accord tôt sur ces points de contact :
 - **Panier → Commandes** : le bouton « Commander » du panier ouvre l'écran de validation du module Commandes et lui passe les articles.
 - **Commandes → Produits** : à la validation, le stock des produits est décrémenté dans une transaction Firestore.
 - **Avis → Produits** : après un nouvel avis, `ratingAverage` et `ratingCount` du produit sont mis à jour.
-- **Utilisateurs → tous** : fournit l'utilisateur connecté (uid, nom, rôle). En attendant, utilisez un uid de test comme `'test-user'`.
+- **Utilisateurs → tous** : fournit l'utilisateur connecté (voir section 5 bis).
 
 Tant qu'un widget d'un autre module n'existe pas, mettez un simple bouton ou texte temporaire avec `// TODO`.
+
+## 5 bis. Utilisateur connecté et sécurité
+
+L'app démarre sur `AuthGate` : écran de connexion, puis espace admin ou client selon le rôle.
+
+```dart
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
+
+final user = CurrentUser.of(context);      // AppUser : user.id, user.fullName, user.isAdmin…
+final maybe = CurrentUser.maybeOf(context); // null si personne n'est connecté
+```
+
+Utilisez `user.id` comme `userId` (commandes, avis, panier `carts/{user.id}`).
+
+**Comptes de test** : créez un compte depuis l'écran « Créer un compte ». Pour devenir admin,
+mettez `role: "admin"` sur votre document `users/{uid}` dans la console Firestore
+(ou demandez à un admin de vous nommer depuis « Gestion des utilisateurs »).
+
+**Mode développement** (debug uniquement) : lien sous le formulaire de connexion pour ouvrir
+les espaces sans se connecter. Attention : sans connexion, Firestore refuse les lectures.
+
+**Règles Firestore** : fichier `firestore.rules` à la racine. Chaque module complète le bloc
+de sa collection (les règles actuelles des autres modules sont provisoires : « tout utilisateur
+actif »). Déployer : `firebase deploy --only firestore:rules --project projetmobile-4csde2`
+ou copier-coller dans la console (Firestore > Règles).
 
 ## 6. Travailler avec Git
 

@@ -24,45 +24,104 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.email,
-    required this.fullName,
+    required this.firstName,
+    required this.lastName,
     this.role = UserRole.client,
     this.phone,
     this.address,
     this.photoUrl,
+    this.photoPublicId,
     this.createdAt,
+    this.disabled = false,
   });
 
   final String id;
   final String email;
-  final String fullName;
+  final String firstName; // prénom
+  final String lastName; // nom
   final UserRole role;
   final String? phone;
   final String? address;
+
+  /// Photo de profil hébergée sur Cloudinary (null : on affiche les initiales).
   final String? photoUrl;
+
+  /// Identifiant Cloudinary de la photo (utile pour la supprimer plus tard).
+  final String? photoPublicId;
   final DateTime? createdAt;
 
-  bool get isAdmin => role == UserRole.admin;
+  /// Compte désactivé par un admin : l'utilisateur ne peut plus utiliser l'app.
+  final bool disabled;
 
-  factory AppUser.fromMap(String id, Map<String, dynamic> map) => AppUser(
-        id: id,
-        email: map['email'] as String? ?? '',
-        fullName: map['fullName'] as String? ?? '',
-        role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
-        phone: map['phone'] as String?,
-        address: map['address'] as String?,
-        photoUrl: map['photoUrl'] as String?,
-        createdAt: _toDate(map['createdAt']),
+  /// "Prénom Nom" : à utiliser pour l'affichage (ex. userName d'un avis).
+  String get fullName => '$firstName $lastName'.trim();
+
+  bool get isAdmin => role == UserRole.admin;
+  bool get hasPhoto => (photoUrl ?? '').isNotEmpty;
+
+  AppUser copyWith({
+    String? email,
+    String? firstName,
+    String? lastName,
+    UserRole? role,
+    String? phone,
+    String? address,
+    String? photoUrl,
+    String? photoPublicId,
+    bool? disabled,
+  }) => AppUser(
+    id: id,
+    email: email ?? this.email,
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    role: role ?? this.role,
+    phone: phone ?? this.phone,
+    address: address ?? this.address,
+    photoUrl: photoUrl ?? this.photoUrl,
+    photoPublicId: photoPublicId ?? this.photoPublicId,
+    createdAt: createdAt,
+    disabled: disabled ?? this.disabled,
+  );
+
+  factory AppUser.fromMap(String id, Map<String, dynamic> map) {
+    var first = map['firstName'] as String?;
+    var last = map['lastName'] as String?;
+    // Anciens documents : seulement "fullName" → on le découpe.
+    if (first == null && last == null) {
+      final parts = (map['fullName'] as String? ?? '').trim().split(
+        RegExp(r'\s+'),
       );
+      first = parts.first;
+      last = parts.skip(1).join(' ');
+    }
+    return AppUser(
+      id: id,
+      email: map['email'] as String? ?? '',
+      firstName: first ?? '',
+      lastName: last ?? '',
+      role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
+      phone: map['phone'] as String?,
+      address: map['address'] as String?,
+      photoUrl: map['photoUrl'] as String?,
+      photoPublicId: map['photoPublicId'] as String?,
+      createdAt: _toDate(map['createdAt']),
+      disabled: map['disabled'] == true,
+    );
+  }
 
   Map<String, dynamic> toMap() => {
-        'email': email,
-        'fullName': fullName,
-        'role': role.name,
-        'phone': phone,
-        'address': address,
-        'photoUrl': photoUrl,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'email': email,
+    'firstName': firstName,
+    'lastName': lastName,
+    'fullName': fullName, // copie pratique pour la console / les autres modules
+    'role': role.name,
+    'phone': phone,
+    'address': address,
+    'photoUrl': photoUrl,
+    'photoPublicId': photoPublicId,
+    'createdAt': createdAt ?? DateTime.now(),
+    'disabled': disabled,
+  };
 }
 
 // ─── Produits & catégories (propriétaire : module Produits) ─────────────────

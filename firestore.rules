@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// Règles de sécurité Firestore de CosmaPlus.
+// Déployer : firebase deploy --only firestore:rules --project projetmobile-4csde2
+// (ou copier-coller dans Console Firebase > Firestore > Règles > Publier)
+//
+// Chaque module est responsable du bloc de sa collection (voir docs/EQUIPE.md).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Fonctions communes (module Utilisateurs) ─────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Connecté, avec un profil, et pas désactivé.
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myProfile().data.get('disabled', false) == false;
+    }
+
+    function isAdmin() {
+      return isActive() && myProfile().data.role == 'admin';
+    }
+
+    // Photo de profil : absente, ou hébergée sur Cloudinary uniquement.
+    function validPhoto() {
+      let photo = request.resource.data.get('photoUrl', null);
+      return photo == null
+        || (photo is string && photo.matches('^https://res[.]cloudinary[.]com/.*'));
+    }
+
+    // ─── users (module Utilisateurs) ──────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+
+      // Inscription : uniquement son propre profil, en tant que client actif.
+      // Un admin peut créer n'importe quel profil (client ou admin).
+      allow create: if validPhoto() && (isAdmin()
+        || (isSelf(uid)
+            && request.resource.data.role == 'client'
+            && request.resource.data.get('disabled', false) == false));
+
+      // Un utilisateur modifie son profil (nom, photo…), sauf son rôle et son statut.
+      allow update: if validPhoto() && (isAdmin()
+        || (isSelf(uid) && isActive()
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['role', 'disabled', 'createdAt'])));
+
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── Autres modules : règles PROVISOIRES ──────────────────────────────
+    // TODO(chaque module) : remplacer par des règles précises.
+    // Exemple produits : lecture pour tous les actifs, écriture admin seulement.
+    match /products/{id} {
+      allow read, write: if isActive();
+    }
+    match /categories/{id} {
+      allow read, write: if isActive();
+    }
+    match /orders/{id} {
+      allow read, write: if isActive();
+    }
+    match /carts/{uid}/{document=**} {
+      allow read, write: if isSelf(uid) && isActive();
+    }
+    match /reviews/{id} {
+      allow read, write: if isActive();
+    }
+  }
+}
