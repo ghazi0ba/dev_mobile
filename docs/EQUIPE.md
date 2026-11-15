@@ -81,7 +81,9 @@ carts/{uid}/items/{productId}
 
 orders/{id}
   userId, lines [{productId, name, unitPrice, quantity, imageUrl}],
-  total, shippingAddress, status, paymentMethod ("livraison"), createdAt
+  total, shippingAddress, customerName, customerEmail, customerPhone, note,
+  status, paymentMethod ("livraison"), stockReserved,
+  history [{status, at, by ("client" | "admin")}], createdAt, updatedAt
   status : "enAttente" | "confirmee" | "expediee" | "livree" | "annulee"
 
 reviews/{id}
@@ -94,8 +96,16 @@ Mettez-vous d'accord tôt sur ces points de contact :
 
 - **Produits → Panier** : la fiche produit affiche un bouton « Ajouter au panier » fourni par le module Panier (ex. widget `AddToCartButton(productId: ...)` dans `features/panier/widgets/`).
 - **Produits → Avis** : la fiche produit affiche les avis via un widget du module Avis (ex. `ProductReviews(productId: ...)` dans `features/avis/widgets/`).
-- **Panier → Commandes** : le bouton « Commander » du panier ouvre l'écran de validation du module Commandes et lui passe les articles.
-- **Commandes → Produits** : à la validation, le stock des produits est décrémenté dans une transaction Firestore.
+- **Panier → Commandes** : le panier est stocké dans `carts/{uid}/items/{productId}` avec un champ `quantity` (entier). Le bouton « Commander » du panier ouvre simplement :
+  ```dart
+  import 'package:dev_mobile/features/commandes/screens/checkout_screen.dart';
+
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+  );
+  ```
+  L'écran relit le panier, les prix et le stock dans Firestore, et vide les articles commandés une fois la commande passée.
+- **Commandes → Produits** : le stock n'est **pas** retiré quand le client commande, mais quand l'**admin confirme** la commande (transaction Firestore). Il est remis en stock si une commande confirmée ou expédiée est annulée. Champs produits utilisés : `name`, `price`, `stock`, `imageUrl`.
 - **Avis → Produits** : après un nouvel avis, `ratingAverage` et `ratingCount` du produit sont mis à jour.
 - **Utilisateurs → tous** : fournit l'utilisateur connecté (voir section 5 bis).
 
