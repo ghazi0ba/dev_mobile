@@ -148,13 +148,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── carts (module Panier) ────────────────────────────────────────────
+    // carts/{uid} : résumé du panier ; carts/{uid}/items/{productId} : articles.
+    match /carts/{uid} {
+      allow read: if (isSelf(uid) && isActive()) || isAdmin();
+      allow create, update: if isSelf(uid) && isActive()
+        && request.resource.data.userId == uid;
+      allow delete: if (isSelf(uid) && isActive()) || isAdmin();
+
+      match /items/{productId} {
+        allow read: if (isSelf(uid) && isActive()) || isAdmin();
+        // Quantité entière entre 1 et 99.
+        allow create, update: if isSelf(uid) && isActive()
+          && request.resource.data.quantity is int
+          && request.resource.data.quantity >= 1
+          && request.resource.data.quantity <= 99;
+        allow delete: if (isSelf(uid) && isActive()) || isAdmin();
+      }
+    }
+
     // ─── Autres modules : règles PROVISOIRES ──────────────────────────────
     // TODO(chaque module) : remplacer par des règles précises.
     match /categories/{id} {
       allow read, write: if isActive();
-    }
-    match /carts/{uid}/{document=**} {
-      allow read, write: if isSelf(uid) && isActive();
     }
   }
 }

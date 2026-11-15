@@ -76,6 +76,10 @@ products/{id}
   volume, imageUrl, labels ["bio","vegan","naturel"],
   ratingAverage, ratingCount, createdAt
 
+carts/{uid}
+  userId, customerName, customerEmail, itemCount, lineCount, estimatedTotal, updatedAt
+  (résumé tenu à jour par le module Panier, pour la vue admin)
+
 carts/{uid}/items/{productId}
   quantity, addedAt            # pas de prix : on le relit dans products
 
@@ -94,7 +98,14 @@ reviews/{id}
 
 Mettez-vous d'accord tôt sur ces points de contact :
 
-- **Produits → Panier** : la fiche produit affiche un bouton « Ajouter au panier » fourni par le module Panier (ex. widget `AddToCartButton(productId: ...)` dans `features/panier/widgets/`).
+- **Produits → Panier** : la fiche produit (et les cartes produits) affichent le bouton du module Panier. Il vérifie le stock et se masque pour les admins :
+  ```dart
+  import 'package:dev_mobile/features/panier/widgets/cart_widgets.dart';
+
+  AddToCartButton(product: product)                 // bouton pleine largeur
+  AddToCartButton(product: product, compact: true)  // petite icône
+  ```
+  Pour un badge du nombre d'articles : `CartService.instance.watchItemCount(uid)`.
 - **Produits → Avis** : la fiche produit affiche les avis via un widget du module Avis (ex. `ProductReviews(productId: ...)` dans `features/avis/widgets/`).
 - **Panier → Commandes** : le panier est stocké dans `carts/{uid}/items/{productId}` avec un champ `quantity` (entier). Le bouton « Commander » du panier ouvre simplement :
   ```dart

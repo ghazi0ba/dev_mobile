@@ -262,6 +262,57 @@ class CartItem {
       };
 }
 
+/// Document `carts/{uid}` : résumé du panier, tenu à jour par le module Panier.
+/// Sert à l'admin pour lister les paniers en cours sans tout relire.
+class CartSummary {
+  const CartSummary({
+    required this.userId,
+    this.customerName = '',
+    this.customerEmail = '',
+    this.itemCount = 0,
+    this.lineCount = 0,
+    this.estimatedTotal = 0,
+    this.updatedAt,
+  });
+
+  final String userId;
+  final String customerName;
+  final String customerEmail;
+
+  /// Nombre total d'unités (somme des quantités).
+  final int itemCount;
+
+  /// Nombre de produits différents.
+  final int lineCount;
+
+  /// Total au prix du moment de la dernière modification.
+  final double estimatedTotal;
+  final DateTime? updatedAt;
+
+  bool get isEmpty => itemCount == 0;
+
+  factory CartSummary.fromMap(String userId, Map<String, dynamic> map) =>
+      CartSummary(
+        userId: userId,
+        customerName: map['customerName'] as String? ?? '',
+        customerEmail: map['customerEmail'] as String? ?? '',
+        itemCount: _toInt(map['itemCount']),
+        lineCount: _toInt(map['lineCount']),
+        estimatedTotal: _toDouble(map['estimatedTotal']),
+        updatedAt: _toDate(map['updatedAt']),
+      );
+
+  Map<String, dynamic> toMap() => {
+        'userId': userId,
+        'customerName': customerName,
+        'customerEmail': customerEmail,
+        'itemCount': itemCount,
+        'lineCount': lineCount,
+        'estimatedTotal': estimatedTotal,
+        'updatedAt': updatedAt ?? DateTime.now(),
+      };
+}
+
 // ─── Commandes (propriétaire : module Commandes) ────────────────────────────
 
 enum OrderStatus { enAttente, confirmee, expediee, livree, annulee }

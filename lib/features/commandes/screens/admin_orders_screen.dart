@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:dev_mobile/core/widgets/widgets.dart';
+import 'package:dev_mobile/features/panier/screens/admin_carts_screen.dart';
 import 'package:dev_mobile/shared/models/models.dart';
 
 import '../services/order_rules.dart';
@@ -116,6 +117,21 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                         style: AppTheme.serif(
                             size: 20, weight: FontWeight.w700)),
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm + 4),
+              Card(
+                child: ListTile(
+                  key: const Key('open-admin-carts'),
+                  leading: const IconBadge(
+                    icon: Icons.shopping_bag_outlined,
+                    background: AppColors.secondary,
+                  ),
+                  title: const Text('Paniers en cours'),
+                  subtitle: const Text('Ce que les clients n\'ont pas encore commandé'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const AdminCartsScreen())),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
