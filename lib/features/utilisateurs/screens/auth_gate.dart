@@ -5,6 +5,7 @@ import 'package:dev_mobile/core/widgets/widgets.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/current_user_scope.dart';
+import 'complete_profile_screen.dart';
 import 'login_screen.dart';
 
 /// Point d'entrée de l'app : choisit l'écran selon la session.
@@ -36,6 +37,11 @@ class _AuthGateState extends State<AuthGate> {
       SessionStatus.ready when user!.disabled => (
         'disabled',
         const DisabledAccountScreen(),
+      ),
+      // Prénom ou nom manquant (ancien compte) : à compléter avant d'entrer.
+      SessionStatus.ready when !user!.hasCompleteName => (
+        'incomplete',
+        CompleteProfileScreen(user: user),
       ),
       SessionStatus.ready when user!.isAdmin => ('admin', const AdminShell()),
       SessionStatus.ready => ('client', const ClientShell()),
@@ -85,14 +91,10 @@ class _MissingProfileScreenState extends State<_MissingProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Pendant une inscription, le profil arrive en moins d'une seconde.
+    // S'il n'existe toujours pas, on le fait créer (prénom + nom).
     if (!_timedOut) return const _LoadingScreen();
-    return _MessageScreen(
-      icon: Icons.person_off_outlined,
-      title: 'Profil introuvable',
-      message:
-          'Votre profil n\'a pas pu être chargé. '
-          'Vérifiez votre connexion puis reconnectez-vous.',
-    );
+    return const CompleteProfileScreen();
   }
 }
 

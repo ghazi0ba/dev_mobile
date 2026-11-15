@@ -20,10 +20,14 @@ class AccountScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Toujours connecté ici : l'AuthGate n'ouvre les espaces qu'après connexion.
+    // (null seulement pendant la fraction de seconde d'une déconnexion)
     final user = CurrentUser.maybeOf(context);
     return Scaffold(
       appBar: AppHeader(subtitle: user?.isAdmin == true ? 'Menu' : 'Profil'),
-      body: user == null ? const _NotSignedIn() : _AccountBody(user: user),
+      body: user == null
+          ? const Center(child: CircularProgressIndicator())
+          : _AccountBody(user: user),
     );
   }
 }
@@ -188,37 +192,6 @@ class _AccountBody extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Visible seulement en mode développement (espaces ouverts sans connexion).
-class _NotSignedIn extends StatelessWidget {
-  const _NotSignedIn();
-
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(AppSpacing.md),
-    children: [
-      SectionCard(
-        child: Column(
-          children: [
-            const IconBadge(
-              icon: Icons.person_off_outlined,
-              size: 64,
-              background: AppColors.secondary,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text('Non connecté', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Mode développement : connectez-vous pour voir votre profil.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
 }
 
 /// Ligne "icône + libellé + valeur" d'une fiche.

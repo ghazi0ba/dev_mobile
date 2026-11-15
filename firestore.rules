@@ -40,19 +40,35 @@ service cloud.firestore {
         || (photo is string && photo.matches('^https://res[.]cloudinary[.]com/.*'));
     }
 
+    // Prénom et nom : textes non vides.
+    function validNames() {
+      let d = request.resource.data;
+      return d.get('firstName', '') is string && d.get('firstName', '').trim().size() > 0
+        && d.get('lastName', '') is string && d.get('lastName', '').trim().size() > 0;
+    }
+
+    // Mise à jour : si le prénom ou le nom change, il doit rester non vide.
+    // (les anciens profils sans prénom/nom restent modifiables pour le reste)
+    function namesStillValid() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['firstName', 'lastName'])
+        || validNames();
+    }
+
     // ─── users (module Utilisateurs) ──────────────────────────────────────
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
 
       // Inscription : uniquement son propre profil, en tant que client actif.
       // Un admin peut créer n'importe quel profil (client ou admin).
-      allow create: if validPhoto() && (isAdmin()
+      // Tout nouveau profil doit avoir un prénom et un nom.
+      allow create: if validPhoto() && validNames() && (isAdmin()
         || (isSelf(uid)
             && request.resource.data.role == 'client'
             && request.resource.data.get('disabled', false) == false));
 
       // Un utilisateur modifie son profil (nom, photo…), sauf son rôle et son statut.
-      allow update: if validPhoto() && (isAdmin()
+      allow update: if validPhoto() && namesStillValid() && (isAdmin()
         || (isSelf(uid) && isActive()
             && !request.resource.data.diff(resource.data).affectedKeys()
                 .hasAny(['role', 'disabled', 'createdAt'])));

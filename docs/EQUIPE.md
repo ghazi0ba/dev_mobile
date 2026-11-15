@@ -20,8 +20,7 @@ lib/
 ├── main.dart                 # démarrage + Firebase (ne pas toucher)
 ├── app/
 │   ├── shells.dart           # barres de navigation admin / client
-│   ├── home_screen.dart      # tableau de bord : écran d'exemple du thème
-│   └── dev_launcher.dart     # écran temporaire pour choisir admin/client
+│   └── home_screen.dart      # tableau de bord : écran d'exemple du thème
 ├── core/
 │   ├── theme/                # couleurs et thème (AppColors, AppTheme, AppSpacing)
 │   └── widgets/              # composants partagés (AppHeader, SectionCard, StatusBadge…)
@@ -125,8 +124,8 @@ Détails complets du module Utilisateurs : `docs/UTILISATEURS.md`.
 mettez `role: "admin"` sur votre document `users/{uid}` dans la console Firestore
 (ou demandez à un admin de vous nommer depuis « Gestion des utilisateurs »).
 
-**Mode développement** (debug uniquement) : lien sous le formulaire de connexion pour ouvrir
-les espaces sans se connecter. Attention : sans connexion, Firestore refuse les lectures.
+Il n'y a plus de « mode développement » : pour tester un espace, connectez-vous avec un
+compte client ou admin.
 
 **Règles Firestore** : fichier `firestore.rules` à la racine. Chaque module complète le bloc
 de sa collection (les règles actuelles des autres modules sont provisoires : « tout utilisateur

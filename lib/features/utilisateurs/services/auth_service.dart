@@ -34,22 +34,38 @@ class AuthService {
     final email = user.email ?? '';
     final profile = await _users.getUser(user.uid);
     if (profile == null) {
-      final parts = (user.displayName ?? email.split('@').first).trim().split(
-        RegExp(r'\s+'),
-      );
-      await _users.createProfile(
-        AppUser(
-          id: user.uid,
-          email: email,
-          firstName: parts.first,
-          lastName: parts.skip(1).join(' '),
-        ),
-      );
-    } else if (email.isNotEmpty &&
-        profile.email != email &&
-        !profile.disabled) {
+      // Compte créé depuis la console : prénom/nom tirés du nom affiché.
+      // S'il en manque un, rien n'est créé : l'AuthGate affiche
+      // "Complétez votre profil", qui crée le profil.
+      final (first, last) = AppUser.splitFullName(user.displayName ?? '');
+      if (first.isNotEmpty && last.isNotEmpty) {
+        await createOwnProfile(firstName: first, lastName: last);
+      }
+      return;
+    }
+    if (profile.disabled) return;
+    if (email.isNotEmpty && profile.email != email) {
       await _users.updateEmail(user.uid, email);
     }
+    // Ancien profil (seulement "fullName") : on enregistre prénom et nom.
+    await _users.migrateLegacyName(user.uid);
+  }
+
+  /// Crée le profil client de l'utilisateur connecté (compte sans profil).
+  Future<void> createOwnProfile({
+    required String firstName,
+    required String lastName,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw const AuthFailure("Vous n'êtes pas connecté.");
+    await _users.createProfile(
+      AppUser(
+        id: user.uid,
+        email: user.email ?? '',
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      ),
+    );
   }
 
   /// Inscription d'un client. En cas d'échec du profil, le compte est annulé.

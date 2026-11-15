@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 
 import 'package:dev_mobile/core/widgets/widgets.dart';
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
+import 'package:dev_mobile/shared/models/models.dart';
 
 /// Tableau de bord admin (maquette "Accueil").
 /// Écran de référence : montre comment utiliser le thème et les composants.
+/// Le message d'accueil utilise le prénom de l'utilisateur connecté.
 /// Les chiffres sont des exemples ; ils seront branchés sur Firestore plus tard.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  /// "Bonjour Nadia," le jour, "Bonsoir Nadia," à partir de 18 h.
+  static String _greeting(AppUser? user) {
+    final hello = DateTime.now().hour >= 18 ? 'Bonsoir' : 'Bonjour';
+    final name = user?.firstName.trim() ?? '';
+    return name.isEmpty ? '$hello,' : '$hello $name,';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +35,13 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text('Bonjour Nadia,', style: text.headlineSmall),
+                        Flexible(
+                          child: Text(
+                            _greeting(CurrentUser.maybeOf(context)),
+                            style: text.headlineSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         const SizedBox(width: AppSpacing.xs),
                         const Icon(Icons.auto_awesome,
                             size: 18, color: AppColors.accent),

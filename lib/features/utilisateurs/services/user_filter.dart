@@ -11,6 +11,7 @@ enum ProfileFilter {
   missingAddress,
   withPhoto,
   withoutPhoto,
+  incompleteName,
 }
 
 enum UserSort { lastNameAsc, lastNameDesc, firstNameAsc, newest, oldest, email }
@@ -23,6 +24,7 @@ extension ProfileFilterLabel on ProfileFilter {
     ProfileFilter.missingAddress => 'Sans adresse',
     ProfileFilter.withPhoto => 'Avec photo',
     ProfileFilter.withoutPhoto => 'Sans photo',
+    ProfileFilter.incompleteName => 'Nom incomplet',
   };
 }
 
@@ -153,6 +155,8 @@ class UserFilter {
         if (!u.hasPhoto) return false;
       case ProfileFilter.withoutPhoto:
         if (u.hasPhoto) return false;
+      case ProfileFilter.incompleteName:
+        if (u.hasCompleteName) return false;
     }
 
     if (hasDateRange) {

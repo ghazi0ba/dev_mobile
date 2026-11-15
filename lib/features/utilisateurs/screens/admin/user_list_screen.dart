@@ -28,6 +28,27 @@ class _UserListScreenState extends State<UserListScreen> {
   UserFilter _filter = const UserFilter();
 
   @override
+  void initState() {
+    super.initState();
+    _migrateLegacyNames();
+  }
+
+  /// Anciens profils (seulement "fullName") → prénom + nom, une seule fois.
+  Future<void> _migrateLegacyNames() async {
+    try {
+      final count = await UserService.instance.migrateAllLegacyNames();
+      if (count > 0 && mounted) {
+        showMessage(
+          context,
+          '$count profil${count > 1 ? 's' : ''} mis à jour (prénom / nom).',
+        );
+      }
+    } catch (_) {
+      // Sans gravité : les profils seront migrés à la connexion de chacun.
+    }
+  }
+
+  @override
   void dispose() {
     _search.dispose();
     super.dispose();
