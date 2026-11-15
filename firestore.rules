@@ -40,6 +40,18 @@ service cloud.firestore {
         || (photo is string && photo.matches('^https://res[.]cloudinary[.]com/.*'));
     }
 
+    // Seuls ces champs changent dans la mise à jour.
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // Note d'avis valide : entier de 1 à 5.
+    function validRating() {
+      return request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+    }
+
     // ─── users (module Utilisateurs) ──────────────────────────────────────
     match /users/{uid} {
       allow read: if isSelf(uid) || isAdmin();
@@ -60,23 +72,73 @@ service cloud.firestore {
       allow delete: if isSelf(uid) || isAdmin();
     }
 
+    // ─── products (module Produits, + note des avis) ──────────────────────
+    // Le stock est modifié par l'admin (confirmation / annulation de commande).
+    match /products/{id} {
+      allow read: if isActive();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        // Avis : mise à jour de la note moyenne uniquement.
+        || (isActive() && onlyChanges(['ratingAverage', 'ratingCount']));
+    }
+
+    // ─── reviews (module Avis) ────────────────────────────────────────────
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      // Un client actif publie un avis en son propre nom.
+      allow create: if isActive()
+        && request.resource.data.userId == request.auth.uid
+        && validRating();
+
+      // L'auteur modifie son avis, sans changer d'auteur ni de produit.
+      allow update: if isActive()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.productId == resource.data.productId
+        && validRating();
+
+      // L'auteur ou un admin supprime l'avis.
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // ─── orders (module Commandes) ────────────────────────────────────────
+    match /orders/{orderId} {
+      // Le client lit ses commandes ; l'admin lit tout.
+      allow read: if isAdmin()
+        || (isActive() && resource.data.userId == request.auth.uid);
+
+      // Le client crée une commande à son nom, en attente, stock non retiré.
+      allow create: if isActive()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'enAttente'
+        && request.resource.data.stockReserved == false
+        && request.resource.data.lines is list
+        && request.resource.data.lines.size() > 0
+        && request.resource.data.total is number
+        && request.resource.data.total > 0;
+
+      // L'admin fait avancer le statut.
+      // Le client peut seulement annuler sa commande tant qu'elle est en attente.
+      allow update: if isAdmin()
+        || (isActive()
+            && resource.data.userId == request.auth.uid
+            && resource.data.status == 'enAttente'
+            && request.resource.data.status == 'annulee'
+            && onlyChanges(['status', 'updatedAt', 'history']));
+
+      // Une commande n'est jamais supprimée (historique de la boutique).
+      allow delete: if false;
+    }
+
     // ─── Autres modules : règles PROVISOIRES ──────────────────────────────
     // TODO(chaque module) : remplacer par des règles précises.
-    // Exemple produits : lecture pour tous les actifs, écriture admin seulement.
-    match /products/{id} {
-      allow read, write: if isActive();
-    }
     match /categories/{id} {
-      allow read, write: if isActive();
-    }
-    match /orders/{id} {
       allow read, write: if isActive();
     }
     match /carts/{uid}/{document=**} {
       allow read, write: if isSelf(uid) && isActive();
-    }
-    match /reviews/{id} {
-      allow read, write: if isActive();
     }
   }
 }

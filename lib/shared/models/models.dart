@@ -300,6 +300,33 @@ class OrderLine {
       };
 }
 
+/// Événement de l'historique d'une commande (changement de statut).
+class OrderEvent {
+  const OrderEvent({required this.status, required this.at, this.by = ''});
+
+  final OrderStatus status;
+  final DateTime at;
+  final String by; // "client" ou "admin"
+
+  factory OrderEvent.fromMap(Map<String, dynamic> map) => OrderEvent(
+        status: orderStatusFromName(map['status'] as String?),
+        at: _toDate(map['at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        by: map['by'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'status': status.name,
+        'at': at,
+        'by': by,
+      };
+}
+
+/// Lit un statut stocké dans Firestore ("enAttente", "confirmee"…).
+OrderStatus orderStatusFromName(String? name) => OrderStatus.values.firstWhere(
+      (s) => s.name == name,
+      orElse: () => OrderStatus.enAttente,
+    );
+
 /// Collection `orders/{id}`.
 class CustomerOrder {
   const CustomerOrder({
@@ -308,9 +335,16 @@ class CustomerOrder {
     required this.lines,
     required this.total,
     required this.shippingAddress,
+    this.customerName = '',
+    this.customerEmail = '',
+    this.customerPhone = '',
+    this.note = '',
     this.status = OrderStatus.enAttente,
     this.paymentMethod = 'livraison', // paiement à la livraison
+    this.stockReserved = false,
+    this.history = const [],
     this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
@@ -318,9 +352,33 @@ class CustomerOrder {
   final List<OrderLine> lines;
   final double total;
   final String shippingAddress;
+
+  /// Copie des infos du client au moment de la commande (pour l'admin).
+  final String customerName;
+  final String customerEmail;
+  final String customerPhone;
+
+  /// Instructions de livraison facultatives.
+  final String note;
+
   final OrderStatus status;
   final String paymentMethod;
+
+  /// true quand le stock des produits a été retiré (à la confirmation).
+  final bool stockReserved;
+
+  /// Changements de statut, du plus ancien au plus récent.
+  final List<OrderEvent> history;
+
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  /// Numéro court affiché à l'écran : "#A1B2C3".
+  String get shortId =>
+      '#${(id.length > 6 ? id.substring(0, 6) : id).toUpperCase()}';
+
+  /// Nombre total d'articles.
+  int get itemCount => lines.fold(0, (sum, l) => sum + l.quantity);
 
   factory CustomerOrder.fromMap(String id, Map<String, dynamic> map) =>
       CustomerOrder(
@@ -331,12 +389,18 @@ class CustomerOrder {
             .toList(),
         total: _toDouble(map['total']),
         shippingAddress: map['shippingAddress'] as String? ?? '',
-        status: OrderStatus.values.firstWhere(
-          (s) => s.name == map['status'],
-          orElse: () => OrderStatus.enAttente,
-        ),
+        customerName: map['customerName'] as String? ?? '',
+        customerEmail: map['customerEmail'] as String? ?? '',
+        customerPhone: map['customerPhone'] as String? ?? '',
+        note: map['note'] as String? ?? '',
+        status: orderStatusFromName(map['status'] as String?),
         paymentMethod: map['paymentMethod'] as String? ?? 'livraison',
+        stockReserved: map['stockReserved'] == true,
+        history: (map['history'] as List? ?? const [])
+            .map((e) => OrderEvent.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList(),
         createdAt: _toDate(map['createdAt']),
+        updatedAt: _toDate(map['updatedAt']),
       );
 
   Map<String, dynamic> toMap() => {
@@ -344,9 +408,16 @@ class CustomerOrder {
         'lines': lines.map((l) => l.toMap()).toList(),
         'total': total,
         'shippingAddress': shippingAddress,
+        'customerName': customerName,
+        'customerEmail': customerEmail,
+        'customerPhone': customerPhone,
+        'note': note,
         'status': status.name,
         'paymentMethod': paymentMethod,
+        'stockReserved': stockReserved,
+        'history': history.map((e) => e.toMap()).toList(),
         'createdAt': createdAt ?? DateTime.now(),
+        'updatedAt': updatedAt ?? DateTime.now(),
       };
 }
 
