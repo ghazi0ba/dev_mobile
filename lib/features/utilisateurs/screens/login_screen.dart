@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:dev_mobile/app/dev_launcher.dart';
 import 'package:dev_mobile/core/widgets/widgets.dart';
 
 import '../services/auth_errors.dart';
@@ -215,14 +213,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                if (kDebugMode)
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DevLauncher()),
-                    ),
-                    icon: const Icon(Icons.developer_mode, size: 18),
-                    label: const Text('Mode développement (sans connexion)'),
-                  ),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

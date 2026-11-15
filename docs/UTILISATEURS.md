@@ -49,8 +49,10 @@ SessionScope  ── listens to Firebase Auth + the users/{uid} document (live)
 AuthGate
    ├─ loading                → spinner
    ├─ signed out             → LoginScreen  (⇄ SignupScreen)
-   ├─ profile missing        → spinner, then "Profil introuvable" after 4 s
+   ├─ profile missing        → spinner (≤ 4 s, normal during sign-up),
+   │                            then "Complétez votre profil" (creates it)
    ├─ profile.disabled=true  → "Compte désactivé" screen
+   ├─ first or last name empty → "Complétez votre profil" screen
    ├─ role = admin           → AdminShell  (Accueil · Produits · Commandes · Avis · Menu)
    └─ role = client          → ClientShell (Boutique · Panier · Commandes · Profil)
 ```
@@ -142,8 +144,9 @@ lib/features/utilisateurs/
 │   └── form_helpers.dart        Validators, BusyButton, ErrorBanner, PasswordField,
 │                                askPassword dialog, formatDate, showMessage
 └── screens/
-    ├── auth_gate.dart           Routing by session (+ disabled / missing-profile screens)
-    ├── login_screen.dart        Sign in, forgot password, link to sign up, dev mode (debug)
+    ├── auth_gate.dart           Routing by session (+ disabled / loading screens)
+    ├── login_screen.dart        Sign in, forgot password, link to sign up
+    ├── complete_profile_screen.dart  Ask for first + last name (old / incomplete accounts)
     ├── signup_screen.dart       Create a client account
     ├── account_screen.dart      My profile (Profil tab for clients, Menu tab for admins)
     ├── profile_form_screen.dart Edit name / phone / address (self or admin)
@@ -179,9 +182,10 @@ The **services** are the only files that talk to Firebase or Cloudinary. Screens
 
 1. `signInWithEmailAndPassword`.
 2. **Profile sync:**
-   - If `users/{uid}` doesn't exist (for example, the account was created by hand in the console), it's created as a client.
+   - If `users/{uid}` doesn't exist (for example, the account was created by hand in the console), it's created as a client, but only if the account's display name gives both a first and a last name. Otherwise the user fills them in on the "Complétez votre profil" screen, which creates the profile.
    - If the login email differs from the stored email (after an email change), the stored email is updated.
-3. `AuthGate` opens the right area for the role, or the "Compte désactivé" screen.
+   - **Old profiles** that only have `fullName` are migrated: `firstName` and `lastName` are written (see 6.7).
+3. `AuthGate` opens the right area for the role, the "Compte désactivé" screen, or "Complétez votre profil" if a name is missing.
 
 **Forgot password:** a dialog asks for the email and calls `sendPasswordResetEmail`. For privacy, the message is the same whether or not the account exists.
 
@@ -243,6 +247,20 @@ The admin can re-enable the account at any time.
 
 ---
 
+### 6.7 First and last name are mandatory
+
+Every user must have a non-empty first name **and** last name. This is enforced at three levels:
+
+1. **Forms:** sign-up, edit profile and admin "create user" all require both fields.
+2. **App:** `AuthGate` shows **"Complétez votre profil"** to any signed-in user missing either name. They can't reach the app until it's filled in, but they can still sign out.
+3. **Firestore rules:** `validNames()` refuses any new profile without both names, and `namesStillValid()` refuses any update that would empty one of them.
+
+**Migrating existing users** (profiles created before the change, with only `fullName`):
+
+- **Automatically, for everyone at once:** when an admin opens **Gestion des utilisateurs**, the app splits each old `fullName` into `firstName` (first word) and `lastName` (the rest) and saves them in one batch. A message shows how many profiles were updated. This only runs when something needs migrating, so it's harmless on later visits.
+- **At sign-in, for each user:** the same migration runs for the user signing in.
+- **Single-word names** (e.g. just "Nadia") can't be split, so they aren't guessed. That user sees "Complétez votre profil" at their next sign-in. Admins can find them with the **Nom incomplet** filter.
+
 ## 7. Admin search and filters
 
 **Where:** Menu → Administration → Gestion des utilisateurs.
@@ -252,7 +270,7 @@ The admin can re-enable the account at any time.
 | **Search bar** | Searches first name, last name, email, phone and address at the same time. Ignores case and accents (`eric` finds `Éric`). Several words must **all** match, in any order (`martin eric`, `nadia tunis`). Phone numbers match with or without spaces (`0612` finds `06 12 34 56 78`). |
 | **Role chips** | Tous / Clients / Admins, each with a count |
 | **Status chips** | Actifs / Désactivés, each with a count. Tap again to turn off. |
-| **Advanced filters** (⚙ button, the badge shows how many are on) | **Sort:** last name A→Z (default) / Z→A, first name A→Z, newest, oldest, email. **Profile:** complete / no phone / no address / with photo / without photo. **Sign-up date:** a date range (both ends included). |
+| **Advanced filters** (⚙ button, the badge shows how many are on) | **Sort:** last name A→Z (default) / Z→A, first name A→Z, newest, oldest, email. **Profile:** complete / no phone / no address / with photo / without photo / **incomplete name**. **Sign-up date:** a date range (both ends included). |
 | **Active filter chips** | Each advanced filter shows as a chip you can remove with ✕ |
 | **Result bar** | "12 sur 40 utilisateurs" + **Réinitialiser** |
 | **Empty state** | Message plus a button to reset the filters |
@@ -274,6 +292,8 @@ The rules are the real protection. Hiding a button in the app isn't enough, beca
 | `isActive()` | Signed in, has a profile, and `disabled` is not `true` |
 | `isAdmin()` | Active **and** `role == 'admin'` |
 | `validPhoto()` | `photoUrl` is missing/`null` or starts with `https://res.cloudinary.com/`. This stops anyone from pointing their avatar at an arbitrary website. |
+| `validNames()` | `firstName` and `lastName` are non-empty strings |
+| `namesStillValid()` | On update: if `firstName` or `lastName` changes, both must still be valid |
 
 **Rules on `users/{uid}`:**
 
@@ -284,7 +304,7 @@ The rules are the real protection. Hiding a button in the app isn't enough, beca
 | update | an admin (anything), or the user themselves if active **and** not touching `role`, `disabled` or `createdAt` |
 | delete | the user themselves, or an admin |
 
-Every create and update must also pass `validPhoto()`.
+Every create must also pass `validPhoto()` and `validNames()`. Every update must pass `validPhoto()` and `namesStillValid()`.
 
 As a result, a client cannot make themselves admin, re-enable their own account, or read other people's profiles.
 
@@ -326,7 +346,7 @@ Until this is done, trying to upload a photo shows "Cloudinary n'est pas configu
 
 ## 10. Developing and testing
 
-- **Dev mode** (debug builds only): the link under the login form opens `DevLauncher` to browse the admin or client area without signing in. Firestore will refuse reads in this mode, so to test with real data, sign in with a test account.
+- **Test accounts:** there's no development mode. To test an area, sign in with a client or an admin account.
 - **Tests:** `test/utilisateurs_test.dart` covers the `AppUser` model (including old `fullName`-only documents), initials, Cloudinary thumbnail URLs, validators, error messages and every search, filter and sort case. Run them with:
   ```bash
   flutter test
@@ -344,7 +364,7 @@ Until this is done, trying to upload a photo shows "Cloudinary n'est pas configu
 | "Vous n'avez pas les droits pour cette action." | The rules aren't deployed, or the user isn't admin / is disabled. |
 | "Un compte existe déjà avec cet email." | Sign in instead, or use "Mot de passe oublié". |
 | "Trop de tentatives…" | Firebase temporarily blocked repeated failures. Wait a few minutes. |
-| "Profil introuvable" screen | The `users/{uid}` document is missing and couldn't be created. Check the connection and the rules, then sign in again. |
+| "Complétez votre profil" screen | The profile has no first or last name (old account), or no profile at all. Fill in both names. If saving fails, check that the rules are published. |
 | Admin list empty or showing an error | The rules weren't deployed, or your profile doesn't have `role: "admin"`. |
 | "Cloudinary n'est pas configuré…" | Fill in `CloudinaryConfig` (section 9). |
 | "Échec de l'envoi de l'image : Upload preset not found / must be whitelisted for unsigned uploads" | Wrong preset name, or the preset isn't **Unsigned**. |

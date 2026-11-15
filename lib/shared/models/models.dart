@@ -59,6 +59,22 @@ class AppUser {
   bool get isAdmin => role == UserRole.admin;
   bool get hasPhoto => (photoUrl ?? '').isNotEmpty;
 
+  /// Prénom ET nom renseignés (obligatoire pour utiliser l'app).
+  bool get hasCompleteName =>
+      firstName.trim().isNotEmpty && lastName.trim().isNotEmpty;
+
+  /// "Marie Claire Dupont" → ("Marie", "Claire Dupont").
+  /// Un seul mot → (mot, "") : le nom reste à compléter.
+  static (String, String) splitFullName(String fullName) {
+    final parts = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return ('', '');
+    return (parts.first, parts.skip(1).join(' '));
+  }
+
   AppUser copyWith({
     String? email,
     String? firstName,
@@ -88,11 +104,7 @@ class AppUser {
     var last = map['lastName'] as String?;
     // Anciens documents : seulement "fullName" → on le découpe.
     if (first == null && last == null) {
-      final parts = (map['fullName'] as String? ?? '').trim().split(
-        RegExp(r'\s+'),
-      );
-      first = parts.first;
-      last = parts.skip(1).join(' ');
+      (first, last) = splitFullName(map['fullName'] as String? ?? '');
     }
     return AppUser(
       id: id,

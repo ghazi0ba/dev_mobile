@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dev_mobile/core/services/cloudinary_service.dart';
 import 'package:dev_mobile/features/utilisateurs/services/auth_errors.dart';
 import 'package:dev_mobile/features/utilisateurs/services/user_filter.dart';
+import 'package:dev_mobile/features/utilisateurs/services/user_service.dart';
 import 'package:dev_mobile/features/utilisateurs/widgets/form_helpers.dart';
 import 'package:dev_mobile/features/utilisateurs/widgets/user_avatar.dart';
 import 'package:dev_mobile/shared/models/models.dart';
@@ -67,6 +68,37 @@ void main() {
       expect(c.isAdmin, isTrue);
       expect(c.phone, '0600');
       expect(c.lastName, 'Benali');
+    });
+  });
+
+  group('Prénom / nom obligatoires', () {
+    test('splitFullName', () {
+      expect(AppUser.splitFullName('  Marie  Claire Dupont '),
+          ('Marie', 'Claire Dupont'));
+      expect(AppUser.splitFullName('Nadia'), ('Nadia', ''));
+      expect(AppUser.splitFullName('   '), ('', ''));
+    });
+
+    test('hasCompleteName', () {
+      expect(_user('1', 'Nadia', 'Benali').hasCompleteName, isTrue);
+      expect(_user('1', 'Nadia', ' ').hasCompleteName, isFalse);
+      expect(_user('1', '', 'Benali').hasCompleteName, isFalse);
+    });
+
+    test('migration des anciens profils (fullName seul)', () {
+      expect(UserService.legacyNameUpdate({'fullName': 'Nadia Benali'}), {
+        'firstName': 'Nadia',
+        'lastName': 'Benali',
+        'fullName': 'Nadia Benali',
+      });
+      // Un seul mot : pas de migration, l'utilisateur complétera son profil.
+      expect(UserService.legacyNameUpdate({'fullName': 'Nadia'}), isNull);
+      // Déjà migré : rien à faire.
+      expect(
+        UserService.legacyNameUpdate(
+            {'firstName': 'Nadia', 'lastName': 'Benali'}),
+        isNull,
+      );
     });
   });
 
@@ -189,6 +221,10 @@ void main() {
         '4',
       ]);
       expect(ids(const UserFilter(profile: ProfileFilter.withPhoto)), ['1']);
+      // Zoé n'a pas de nom de famille.
+      expect(ids(const UserFilter(profile: ProfileFilter.incompleteName)), [
+        '4',
+      ]);
       expect(ids(const UserFilter(profile: ProfileFilter.withoutPhoto)), [
         '2',
         '3',
