@@ -41,8 +41,12 @@ class ReviewService {
   /// Met à jour un avis existant
   static Future<void> updateReview(String reviewId, Map<String, dynamic> data) async {
     await _collection.doc(reviewId).update(data);
-    // Note: On ne met pas à jour le rating du produit ici car l'avis existe déjà
-    // La mise à jour se fera si la note change
+    // La note a pu changer : on recalcule la moyenne du produit.
+    final doc = await _collection.doc(reviewId).get();
+    final productId = (doc.data() as Map<String, dynamic>?)?['productId'];
+    if (productId is String && productId.isNotEmpty) {
+      await _updateProductRating(productId);
+    }
   }
 
   /// Supprime un avis
@@ -77,7 +81,17 @@ class ReviewService {
     });
   }
 
-  /// Stream des avis d'un produit (pour mise à jour en temps réel)
+  /// Tous les avis, les plus récents d'abord (modération admin).
+  static Stream<List<Review>> watchAllReviews() {
+    return _collection
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Review.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+            .toList());
+  }
+
+    /// Stream des avis d'un produit (pour mise à jour en temps réel)
   static Stream<List<Review>> watchReviewsByProduct(String productId) {
     return _collection
         .where('productId', isEqualTo: productId)
