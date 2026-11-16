@@ -15,8 +15,18 @@ class Validators {
     return _emailRe.hasMatch(s) ? null : 'Email invalide';
   }
 
-  static String? password(String? v) =>
-      (v == null || v.length < 6) ? '6 caractères minimum' : null;
+  /// 8 caractères min., avec majuscule, minuscule, chiffre et caractère spécial.
+  static String? password(String? v) {
+    final s = v ?? '';
+    if (s.length < 8) return '8 caractères minimum';
+    if (!RegExp(r'[A-Z]').hasMatch(s)) return 'Au moins une majuscule';
+    if (!RegExp(r'[a-z]').hasMatch(s)) return 'Au moins une minuscule';
+    if (!RegExp(r'[0-9]').hasMatch(s)) return 'Au moins un chiffre';
+    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(s)) {
+      return 'Au moins un caractère spécial';
+    }
+    return null;
+  }
 
   static String? firstName(String? v) =>
       (v == null || v.trim().isEmpty) ? 'Le prénom est requis' : null;
