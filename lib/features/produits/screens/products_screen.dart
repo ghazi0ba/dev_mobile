@@ -4,6 +4,8 @@ import 'package:dev_mobile/features/produits/services/product_service.dart';
 import 'package:dev_mobile/features/produits/screens/product_add_screen.dart';
 import 'package:dev_mobile/features/produits/screens/product_detail_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:dev_mobile/features/panier/widgets/cart_widgets.dart';
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
 
 /// Products list screen with search and filters - CosmaPlus design
 class ProductsScreen extends StatefulWidget {
@@ -176,6 +178,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Admin : gestion du catalogue. Client : boutique (pas d'ajout/modification).
+    final isAdmin = CurrentUser.maybeOf(context)?.isAdmin ?? false;
+
     return Scaffold(
       backgroundColor: background,
       body: StreamBuilder<List<Product>>(
@@ -237,10 +242,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             const SizedBox(width: 8),
                           if (Navigator.canPop(context))
                             const SizedBox(width: 8),
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'CosmaPlus',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -250,8 +255,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 ),
                               ),
                               Text(
-                                'PRODUITS',
-                                style: TextStyle(
+                                isAdmin ? 'PRODUITS' : 'BOUTIQUE',
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: textPrimary,
@@ -445,12 +450,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddProduct,
-        icon: const Icon(Icons.add),
-        label: const Text('Ajouter'),
-        backgroundColor: primary,
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _navigateToAddProduct,
+              icon: const Icon(Icons.add),
+              label: const Text('Ajouter'),
+              backgroundColor: primary,
+            )
+          : null,
     );
   }
 }
@@ -1305,8 +1312,11 @@ class _ProductCard extends StatelessWidget {
                 ),
               ),
 
-              // Arrow icon
-              const Icon(Icons.arrow_forward_ios, size: 16, color: textLight),
+              // Admin : flèche vers la fiche. Client : ajout rapide au panier.
+              if (CurrentUser.maybeOf(context)?.isAdmin ?? false)
+                const Icon(Icons.arrow_forward_ios, size: 16, color: textLight)
+              else
+                AddToCartButton(product: product, compact: true),
             ],
           ),
         ),

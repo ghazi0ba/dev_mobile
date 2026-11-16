@@ -5,6 +5,7 @@ import 'package:dev_mobile/features/produits/screens/product_edit_screen.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dev_mobile/features/avis/widgets/product_reviews.dart';
+import 'package:dev_mobile/features/panier/widgets/cart_widgets.dart';
 import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
 
 /// Product detail screen with actions
@@ -174,20 +175,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(locale: 'fr_FR', symbol: '€');
+    // Les actions de gestion sont réservées aux administrateurs.
+    final isAdmin = CurrentUser.maybeOf(context)?.isAdmin ?? false;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Détails du produit'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _navigateToEdit,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: _isLoading ? null : _deleteProduct,
-          ),
-        ],
+        actions: isAdmin
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: _navigateToEdit,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: _isLoading ? null : _deleteProduct,
+                ),
+              ]
+            : null,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -380,45 +385,52 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Action buttons
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _adjustStock,
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Ajuster le stock'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                  // Client : ajout au panier. Admin : gestion du produit.
+                  if (!isAdmin)
+                    SizedBox(
+                      width: double.infinity,
+                      child: AddToCartButton(product: _product),
+                    )
+                  else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _adjustStock,
+                        icon: const Icon(Icons.add_circle_outline),
+                        label: const Text('Ajuster le stock'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _navigateToEdit,
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Modifier le produit'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _navigateToEdit,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Modifier le produit'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton.icon(
-                      onPressed: _isLoading ? null : _deleteProduct,
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      label: const Text(
-                        'Supprimer le produit',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: _isLoading ? null : _deleteProduct,
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        label: const Text(
+                          'Supprimer le produit',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
