@@ -9,8 +9,8 @@ class AddReviewScreen extends StatefulWidget {
     super.key,
     required this.productId,
     required this.productName,
-    this.userId = 'test-user',
-    this.userName = 'Utilisateur Test',
+    required this.userId,
+    required this.userName,
     this.onReviewAdded,
   });
 
