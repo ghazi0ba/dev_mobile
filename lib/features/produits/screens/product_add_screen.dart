@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:dev_mobile/shared/models/models.dart';
 import 'package:dev_mobile/features/produits/services/product_service.dart';
 import 'package:dev_mobile/features/produits/services/cloudinary_service.dart';
@@ -31,6 +32,8 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
   final TextEditingController _compositionController = TextEditingController();
   final TextEditingController _volumeController = TextEditingController();
   final TextEditingController _imageUrlController = TextEditingController();
+
+  DateTime? _selectedExpiryDate;
 
   List<ProductCategory> _categories = [];
   String? _selectedCategoryId;
@@ -108,6 +111,24 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
     setState(() {
       _skuController.text = sku;
     });
+  }
+
+  Future<void> _selectExpiryDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedExpiryDate ?? DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 3650)), // 10 ans
+      helpText: 'Sélectionner la date de péremption',
+      cancelText: 'Annuler',
+      confirmText: 'OK',
+    );
+
+    if (picked != null && picked != _selectedExpiryDate) {
+      setState(() {
+        _selectedExpiryDate = picked;
+      });
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -231,6 +252,7 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
             : _imageUrlController.text.trim(),
         labels: _labels,
         createdAt: DateTime.now(),
+        expiryDate: _selectedExpiryDate,
       );
 
       await _productService.addProduct(product);
@@ -382,6 +404,51 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Expiry Date
+                    _buildSectionTitle('Date de péremption'),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: _selectExpiryDate,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedExpiryDate == null
+                                    ? 'Sélectionner une date (optionnel)'
+                                    : 'Péremption : ${DateFormat('dd/MM/yyyy').format(_selectedExpiryDate!)}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _selectedExpiryDate == null
+                                      ? Colors.grey[600]
+                                      : Colors.black87,
+                                ),
+                              ),
+                            ),
+                            if (_selectedExpiryDate != null)
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedExpiryDate = null;
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
 

@@ -174,6 +174,7 @@ class Product {
     this.ratingAverage = 0,
     this.ratingCount = 0,
     this.createdAt,
+    this.expiryDate,
   });
 
   final String id;
@@ -191,14 +192,38 @@ class Product {
   final double ratingAverage; // mis à jour par le module Avis
   final int ratingCount;
   final DateTime? createdAt;
+  final DateTime? expiryDate; // date de péremption
 
   /// Seuil sous lequel le stock est "en alerte".
   static const lowStockThreshold = 10;
+  
+  /// Nombre de jours avant expiration pour afficher l'alerte (30 jours)
+  static const expiryWarningDays = 30;
 
   bool get inStock => stock > 0;
   bool get lowStock => stock > 0 && stock <= lowStockThreshold;
 
   bool get isOutOfStock => stock == 0;
+  
+  /// Vérifie si le produit est expiré
+  bool get isExpired {
+    if (expiryDate == null) return false;
+    return DateTime.now().isAfter(expiryDate!);
+  }
+  
+  /// Vérifie si le produit arrive bientôt à expiration (< 30 jours)
+  bool get isExpiringsoon {
+    if (expiryDate == null) return false;
+    if (isExpired) return false; // déjà expiré
+    final daysUntilExpiry = expiryDate!.difference(DateTime.now()).inDays;
+    return daysUntilExpiry <= expiryWarningDays;
+  }
+  
+  /// Retourne le nombre de jours avant expiration (négatif si expiré)
+  int? get daysUntilExpiry {
+    if (expiryDate == null) return null;
+    return expiryDate!.difference(DateTime.now()).inDays;
+  }
 
   /// Copie avec des champs modifiés (utilisé par le module Produits).
   Product copyWith({
@@ -217,6 +242,7 @@ class Product {
     double? ratingAverage,
     int? ratingCount,
     DateTime? createdAt,
+    DateTime? expiryDate,
   }) =>
       Product(
         id: id ?? this.id,
@@ -234,6 +260,7 @@ class Product {
         ratingAverage: ratingAverage ?? this.ratingAverage,
         ratingCount: ratingCount ?? this.ratingCount,
         createdAt: createdAt ?? this.createdAt,
+        expiryDate: expiryDate ?? this.expiryDate,
       );
 
   factory Product.fromMap(String id, Map<String, dynamic> map) => Product(
@@ -252,6 +279,7 @@ class Product {
         ratingAverage: _toDouble(map['ratingAverage']),
         ratingCount: _toInt(map['ratingCount']),
         createdAt: _toDate(map['createdAt']),
+        expiryDate: _toDate(map['expiryDate']),
       );
 
   Map<String, dynamic> toMap() => {
@@ -269,6 +297,7 @@ class Product {
         'ratingAverage': ratingAverage,
         'ratingCount': ratingCount,
         'createdAt': createdAt ?? DateTime.now(),
+        'expiryDate': expiryDate,
       };
 }
 

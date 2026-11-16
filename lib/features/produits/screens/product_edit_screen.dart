@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:dev_mobile/shared/models/models.dart';
 import 'package:dev_mobile/features/produits/services/product_service.dart';
 import 'package:dev_mobile/features/produits/services/cloudinary_service.dart';
@@ -39,6 +40,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   bool _isLoading = false;
   bool _isUploadingImage = false;
   late List<String> _labels;
+  DateTime? _selectedExpiryDate;
 
   final List<String> _availableLabels = [
     'bio',
@@ -73,6 +75,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
     _selectedCategoryId = widget.product.categoryId;
     _labels = List<String>.from(widget.product.labels);
+    _selectedExpiryDate = widget.product.expiryDate;
 
     _loadCategories();
   }
@@ -212,6 +215,24 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     );
   }
 
+  Future<void> _selectExpiryDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedExpiryDate ?? DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 3650)), // 10 ans
+      helpText: 'Sélectionner la date de péremption',
+      cancelText: 'Annuler',
+      confirmText: 'OK',
+    );
+
+    if (picked != null && picked != _selectedExpiryDate) {
+      setState(() {
+        _selectedExpiryDate = picked;
+      });
+    }
+  }
+
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -247,6 +268,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
             ? null
             : _imageUrlController.text.trim(),
         labels: _labels,
+        expiryDate: _selectedExpiryDate,
       );
 
       await _productService.updateProduct(updatedProduct);
@@ -393,6 +415,51 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Expiry Date
+                    _buildSectionTitle('Date de péremption'),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: _selectExpiryDate,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedExpiryDate == null
+                                    ? 'Sélectionner une date (optionnel)'
+                                    : 'Péremption : ${DateFormat('dd/MM/yyyy').format(_selectedExpiryDate!)}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: _selectedExpiryDate == null
+                                      ? Colors.grey[600]
+                                      : Colors.black87,
+                                ),
+                              ),
+                            ),
+                            if (_selectedExpiryDate != null)
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedExpiryDate = null;
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
 

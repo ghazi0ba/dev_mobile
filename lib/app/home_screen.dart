@@ -114,6 +114,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
+                      
+                      // Expiry alerts pills (above hero banner)
+                      if (!loading && stats.expiryAlerts.isNotEmpty) ...[
+                        Column(
+                          children: stats.expiryAlerts.take(3).map((product) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _ExpiryAlertPill(product: product),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                      
                       _HeroBanner(product: stats.newest),
                       const SizedBox(height: AppSpacing.md),
 
@@ -124,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         mainAxisSpacing: AppSpacing.sm + 4,
                         crossAxisSpacing: AppSpacing.sm + 4,
-                        childAspectRatio: 1.35,
+                        childAspectRatio: 1.2,
                         children: [
                           StatCard(
                             label: 'Produits',
@@ -290,6 +304,18 @@ class _Stats {
       products.where((p) => !p.inStock || p.lowStock).toList()
         ..sort((a, b) => a.stock.compareTo(b.stock));
 
+  /// Produits expirés ou bientôt expirés
+  List<Product> get expiryAlerts =>
+      products.where((p) => p.isExpired || p.isExpiringsoon).toList()
+        ..sort((a, b) {
+          // Expirés d'abord, puis par date d'expiration
+          if (a.isExpired && !b.isExpired) return -1;
+          if (!a.isExpired && b.isExpired) return 1;
+          if (a.expiryDate == null) return 1;
+          if (b.expiryDate == null) return -1;
+          return a.expiryDate!.compareTo(b.expiryDate!);
+        });
+
   /// Produit le plus récent (pour la bannière).
   Product? get newest {
     if (products.isEmpty) return null;
@@ -319,6 +345,71 @@ class _StockAlertRow extends StatelessWidget {
             out ? 'Rupture' : '${product.stock} restant(s)',
             tone: out ? BadgeTone.error : BadgeTone.warning,
             showDot: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pill-style expiry alert widget
+class _ExpiryAlertPill extends StatelessWidget {
+  const _ExpiryAlertPill({required this.product});
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    final isExpired = product.isExpired;
+    final backgroundColor = isExpired 
+        ? const Color(0xFFD64545)  // Red
+        : const Color(0xFFF59E0B); // Yellow/Orange
+    
+    final daysText = isExpired
+        ? 'Expiré il y a ${-product.daysUntilExpiry!}j'
+        : 'Expire dans ${product.daysUntilExpiry}j';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: backgroundColor.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isExpired ? Icons.error : Icons.warning,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              product.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            daysText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
