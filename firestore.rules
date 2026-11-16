@@ -167,10 +167,10 @@ service cloud.firestore {
       }
     }
 
-    // ─── Autres modules : règles PROVISOIRES ──────────────────────────────
-    // TODO(chaque module) : remplacer par des règles précises.
-    match /categories/{id} {
-      allow read, write: if isActive();
-    }
+     // ─── categories (module Produits) ─────────────────────────────────────
+        match /categories/{id} {
+          allow read: if isActive();
+          allow write: if isAdmin();
+        }
   }
 }

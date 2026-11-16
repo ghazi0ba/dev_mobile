@@ -6,7 +6,7 @@ class ProductService {
   final FirebaseFirestore _firestore;
 
   ProductService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Get all products with real-time updates
   Stream<List<Product>> watchAllProducts() {
@@ -15,10 +15,10 @@ class ProductService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => Product.fromMap(doc.id, doc.data()))
-              .toList();
-        });
+      return snapshot.docs
+          .map((doc) => Product.fromMap(doc.id, doc.data()))
+          .toList();
+    });
   }
 
   /// Get all products (one-time fetch)
@@ -33,7 +33,7 @@ class ProductService {
           .map((doc) => Product.fromMap(doc.id, doc.data()))
           .toList();
     } catch (e) {
-      throw Exception('Impossible de charger les produits');
+      throw Exception('Impossible de charger les produits : $e');
     }
   }
 
@@ -46,7 +46,7 @@ class ProductService {
 
       return Product.fromMap(doc.id, doc.data()!);
     } catch (e) {
-      throw Exception('Impossible de charger le produit');
+      throw Exception('Impossible de charger le produit : $e');
     }
   }
 
@@ -56,16 +56,16 @@ class ProductService {
       final docRef = _firestore.collection('products').doc();
 
       final data = product.toMap();
-      // La note est gérée par le module Avis : on ne l'écrase pas.
-      data.remove('ratingAverage');
-      data.remove('ratingCount');
+      // Nouveau produit : aucun avis pour l'instant.
+      data['ratingAverage'] = 0;
+      data['ratingCount'] = 0;
       data['createdAt'] = FieldValue.serverTimestamp();
 
       await docRef.set(data);
 
       return docRef.id;
     } catch (e) {
-      throw Exception('Impossible d\'ajouter le produit: $e');
+      throw Exception('Impossible d\'ajouter le produit : $e');
     }
   }
 
@@ -73,6 +73,9 @@ class ProductService {
   Future<void> updateProduct(Product product) async {
     try {
       final data = product.toMap();
+      // La note est gérée par le module Avis : on ne l'écrase pas.
+      data.remove('ratingAverage');
+      data.remove('ratingCount');
       // Preserve the original creation date
       if (product.createdAt != null) {
         data['createdAt'] = Timestamp.fromDate(product.createdAt!);
@@ -80,7 +83,7 @@ class ProductService {
 
       await _firestore.collection('products').doc(product.id).update(data);
     } catch (e) {
-      throw Exception('Impossible de modifier le produit');
+      throw Exception('Impossible de modifier le produit : $e');
     }
   }
 
@@ -89,7 +92,7 @@ class ProductService {
     try {
       await _firestore.collection('products').doc(id).delete();
     } catch (e) {
-      throw Exception('Impossible de supprimer le produit');
+      throw Exception('Impossible de supprimer le produit : $e');
     }
   }
 
@@ -100,11 +103,12 @@ class ProductService {
         'stock': newStock,
       });
     } catch (e) {
-      throw Exception('Impossible de mettre à jour le stock');
+      throw Exception('Impossible de mettre à jour le stock : $e');
     }
   }
 
-  /// Get all categories (includes default categories if none exist)
+  /// Toutes les catégories, triées par nom.
+  /// Lecture seule : les catégories sont créées par l'admin.
   Future<List<ProductCategory>> getAllCategories() async {
     try {
       final snapshot = await _firestore
@@ -112,25 +116,11 @@ class ProductService {
           .orderBy('name')
           .get();
 
-      var categories = snapshot.docs
+      return snapshot.docs
           .map((doc) => ProductCategory.fromMap(doc.id, doc.data()))
           .toList();
-
-      if (categories.isEmpty) {
-        try {
-          await seedDefaultCategories();
-        } catch (_) {
-          return categories;
-        }
-        final seeded = await _firestore.collection('categories').orderBy('name').get();
-        categories = seeded.docs
-            .map((doc) => ProductCategory.fromMap(doc.id, doc.data()))
-            .toList();
-      }
-
-      return categories;
     } catch (e) {
-      throw Exception('Impossible de charger les catégories');
+      throw Exception('Impossible de charger les catégories : $e');
     }
   }
 
@@ -145,8 +135,8 @@ class ProductService {
     'Soins Spécifiques',
   ];
 
-  /// Inserts the default categories that are not already stored.
-  /// Requires a signed-in admin (`categories` writes are `isAdmin()` only).
+  /// Crée les catégories par défaut manquantes (admin uniquement).
+  /// N'est plus appelée automatiquement : à utiliser seulement sur une base vide.
   Future<void> seedDefaultCategories() async {
     final snapshot = await _firestore.collection('categories').get();
     final existing = snapshot.docs
@@ -169,7 +159,7 @@ class ProductService {
 
       return docRef.id;
     } catch (e) {
-      throw Exception('Impossible d\'ajouter la catégorie');
+      throw Exception('Impossible d\'ajouter la catégorie : $e');
     }
   }
 
@@ -178,7 +168,7 @@ class ProductService {
     try {
       await _firestore.collection('categories').doc(id).delete();
     } catch (e) {
-      throw Exception('Impossible de supprimer la catégorie');
+      throw Exception('Impossible de supprimer la catégorie : $e');
     }
   }
 }

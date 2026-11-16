@@ -31,9 +31,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   StockFilter _stockFilter = StockFilter.all;
   final Set<String> _selectedLabels = {};
 
-  // Available labels
-  final List<String> _availableLabels = ['bio', 'vegan', 'naturel'];
-
   // Cache the stream
   late final Stream<List<Product>> _productsStream;
 
@@ -41,14 +38,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
   static const Color primary = Color(0xFF8B5A47);
   static const Color background = Color(0xFFF8F6F4);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color cardBackground = Color(0xFFF5F3F1);
   static const Color textPrimary = Color(0xFF3D3D3D);
   static const Color textSecondary = Color(0xFF7A7A7A);
   static const Color textLight = Color(0xFFB0B0B0);
   static const Color border = Color(0xFFD0D0D0);
-  static const Color inStock = Color(0xFF5FAD56);
-  static const Color lowStock = Color(0xFFE89B3C);
-  static const Color outOfStock = Color(0xFFD64545);
 
   @override
   void initState() {
@@ -232,17 +225,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     children: [
                       Row(
                         children: [
-                          // Pas de flèche retour : cet écran est un onglet.
+                          // Pas de flèche retour : cet écran est un onglet
+                          // (Produits / Boutique), il n'y a rien derrière.
                           const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.arrow_back),
-                              color: textPrimary,
-                            ),
-                          if (!Navigator.canPop(context))
-                            const SizedBox(width: 8),
-                          if (Navigator.canPop(context))
-                            const SizedBox(width: 8),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -344,7 +329,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                       slivers: [
                         if (_showFilters)
                           SliverToBoxAdapter(
@@ -453,11 +438,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
-              onPressed: _navigateToAddProduct,
-              icon: const Icon(Icons.add),
-              label: const Text('Ajouter'),
-              backgroundColor: primary,
-            )
+        onPressed: _navigateToAddProduct,
+        icon: const Icon(Icons.add),
+        label: const Text('Ajouter'),
+        backgroundColor: primary,
+      )
           : null,
     );
   }
@@ -593,16 +578,16 @@ class _FiltersPanelState extends State<_FiltersPanel> {
                 ),
                 suffixIcon: widget.searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          size: 20,
-                          color: textSecondary.withValues(alpha: 0.7),
-                        ),
-                        onPressed: () {
-                          widget.searchController.clear();
-                          widget.onSearchChanged('');
-                        },
-                      )
+                  icon: Icon(
+                    Icons.close,
+                    size: 20,
+                    color: textSecondary.withValues(alpha: 0.7),
+                  ),
+                  onPressed: () {
+                    widget.searchController.clear();
+                    widget.onSearchChanged('');
+                  },
+                )
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -683,10 +668,10 @@ class _FiltersPanelState extends State<_FiltersPanel> {
                       ? 'Toutes les catégories'
                       : widget.selectedCategories.length == 1
                       ? widget.categories
-                            .firstWhere(
-                              (c) => c.id == widget.selectedCategories.first,
-                            )
-                            .name
+                      .firstWhere(
+                        (c) => c.id == widget.selectedCategories.first,
+                  )
+                      .name
                       : '${widget.selectedCategories.length} catégories sélectionnées',
                   style: const TextStyle(
                     fontSize: 14,
@@ -1150,33 +1135,33 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
                     ? Image.network(
-                        product.imageUrl!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 80,
-                            height: 80,
-                            color: cardBackground,
-                            child: const Icon(
-                              Icons.image_outlined,
-                              color: textLight,
-                              size: 32,
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        width: 80,
-                        height: 80,
-                        color: cardBackground,
-                        child: const Icon(
-                          Icons.image_outlined,
-                          color: textLight,
-                          size: 32,
-                        ),
+                  product.imageUrl!,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: cardBackground,
+                      child: const Icon(
+                        Icons.image_outlined,
+                        color: textLight,
+                        size: 32,
                       ),
+                    );
+                  },
+                )
+                    : Container(
+                  width: 80,
+                  height: 80,
+                  color: cardBackground,
+                  child: const Icon(
+                    Icons.image_outlined,
+                    color: textLight,
+                    size: 32,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
 

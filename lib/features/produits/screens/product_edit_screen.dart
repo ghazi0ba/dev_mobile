@@ -310,7 +310,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
                     // Category dropdown
                     DropdownButtonFormField<String>(
-                      value: _selectedCategoryId,
+                      initialValue: _selectedCategoryId,
                       decoration: const InputDecoration(
                         labelText: 'Catégorie',
                         hintText: 'Sélectionner une catégorie',

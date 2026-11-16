@@ -37,7 +37,7 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
   File? _selectedImageFile;
   bool _isLoading = false;
   bool _isUploadingImage = false;
-  List<String> _labels = [];
+  final List<String> _labels = [];
 
   final List<String> _availableLabels = [
     'bio',
@@ -299,7 +299,7 @@ class _ProductAddScreenState extends State<ProductAddScreen> {
 
                     // Category dropdown
                     DropdownButtonFormField<String>(
-                      value: _selectedCategoryId,
+                      initialValue: _selectedCategoryId,
                       decoration: const InputDecoration(
                         labelText: 'Catégorie',
                         hintText: 'Sélectionner une catégorie',
