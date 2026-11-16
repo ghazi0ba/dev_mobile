@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:dev_mobile/core/widgets/widgets.dart';
 import 'package:dev_mobile/features/avis/screens/add_review_screen.dart';
@@ -12,8 +13,8 @@ class ProductReviews extends StatefulWidget {
   const ProductReviews({
     super.key,
     required this.product,
-    this.userId = 'test-user',
-    this.userName = 'Utilisateur Test',
+    required this.userId,
+    required this.userName,
     this.maxReviewsToShow = 3,
   });
 
@@ -88,6 +89,33 @@ class _ProductReviewsState extends State<ProductReviews> {
     }
   }
 
+  Future<void> _deleteReview(Review review) async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Supprimer votre avis ?',
+      message: 'Votre note et votre commentaire seront supprimés.',
+      confirmLabel: 'Oui, supprimer',
+      destructive: true,
+    );
+    if (!ok || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ReviewService.deleteReview(review.id, review.productId);
+      if (mounted) setState(() => _userReview = null);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Avis supprimé')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -95,29 +123,43 @@ class _ProductReviewsState extends State<ProductReviews> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Résumé de la note du produit
+        // Résumé de la note du produit (mis à jour en direct)
         Row(
           children: [
-            Text(
-              widget.product.ratingAverage.toStringAsFixed(1),
-              style: AppTheme.serif(size: 36, weight: FontWeight.w700),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RatingStars(
-                  rating: widget.product.ratingAverage.round(),
-                  size: 20,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${widget.product.ratingCount} avis',
-                  style: text.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('products')
+                  .doc(widget.product.id)
+                  .snapshots(),
+              builder: (context, snap) {
+                final data = snap.data?.data();
+                final average = (data?['ratingAverage'] as num?)?.toDouble() ??
+                    widget.product.ratingAverage;
+                final count = (data?['ratingCount'] as num?)?.toInt() ??
+                    widget.product.ratingCount;
+                return Row(
+                  children: [
+                    Text(
+                      average.toStringAsFixed(1),
+                      style: AppTheme.serif(size: 36, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RatingStars(rating: average.round(), size: 20),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$count avis',
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
             const Spacer(),
             if (_userReview == null)
@@ -181,24 +223,17 @@ class _ProductReviewsState extends State<ProductReviews> {
 
             return Column(
               children: [
-                ReviewCardList(
-                  reviews: displayReviews,
-                  onEdit: _userReview != null
-                      ? (r) {
-                          if (r.id == _userReview!.id) {
-                            _openEditReview();
-                          }
-                        }
-                      : null,
-                  onDelete: _userReview != null
-                      ? (r) {
-                          if (r.id == _userReview!.id) {
-                            _openEditReview();
-                          }
-                        }
-                      : null,
-                  emptyMessage: '',
-                ),
+                // Modifier / Supprimer uniquement sur son propre avis.
+                for (final r in displayReviews)
+                  ReviewCard(
+                    review: r,
+                    onEdit: r.userId == widget.userId
+                        ? () => _openEditReview()
+                        : null,
+                    onDelete: r.userId == widget.userId
+                        ? () => _deleteReview(r)
+                        : null,
+                  ),
                 if (reviews.length > widget.maxReviewsToShow) ...[
                   const SizedBox(height: AppSpacing.md),
                   Center(
