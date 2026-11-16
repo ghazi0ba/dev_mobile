@@ -171,11 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: 'Valeur du stock',
                             value: loading
                                 ? '…'
-                                : formatPrice(stats.stockValue)
-                                .replaceAll(',00', ''),
+                                : '${stats.stockValue.round()} €',
                             icon: Icons.euro,
                             iconBackground: AppColors.successLight,
-                            badge: const StatusBadge('Prix de vente'),
+                            badge: const StatusBadge('Vente'),
                           ),
                         ],
                       ),
