@@ -56,6 +56,9 @@ class ProductService {
       final docRef = _firestore.collection('products').doc();
 
       final data = product.toMap();
+      // La note est gérée par le module Avis : on ne l'écrase pas.
+      data.remove('ratingAverage');
+      data.remove('ratingCount');
       data['createdAt'] = FieldValue.serverTimestamp();
 
       await docRef.set(data);

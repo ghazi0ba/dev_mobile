@@ -232,7 +232,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     children: [
                       Row(
                         children: [
-                          if (Navigator.canPop(context))
+                          // Pas de flèche retour : cet écran est un onglet.
+                          const SizedBox(width: 8),
                             IconButton(
                               onPressed: () => Navigator.pop(context),
                               icon: const Icon(Icons.arrow_back),

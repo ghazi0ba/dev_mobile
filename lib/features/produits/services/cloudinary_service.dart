@@ -4,11 +4,11 @@ import 'package:http/http.dart' as http;
 
 /// Cloudinary configuration for image upload
 class CloudinaryConfig {
-  // Your Cloudinary cloud name
-  static const String cloudName = 'aj4z6cq9';
 
-  // Your unsigned upload preset name
-  static const String uploadPreset = 'cosmetics_unsigned';
+  static const String cloudName = 'x8z7s871';
+
+  // Preset non signé de l'équipe
+  static const String uploadPreset = 'project_mobile_esprit';
 
   // Cloudinary upload API URL
   static String get uploadUrl =>
