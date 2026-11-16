@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http;
 class CloudinaryConfig {
   CloudinaryConfig._();
 
-  // TODO(équipe) : remplacer par les valeurs du compte Cloudinary du projet.
+
   static const cloudName = 'x8z7s871';
   static const uploadPreset = 'project_mobile_esprit';
 
