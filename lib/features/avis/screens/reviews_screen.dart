@@ -5,6 +5,7 @@ import 'package:dev_mobile/features/avis/screens/edit_review_screen.dart';
 import 'package:dev_mobile/features/avis/services/services.dart';
 import 'package:dev_mobile/features/avis/widgets/widgets.dart';
 import 'package:dev_mobile/shared/models/models.dart';
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
 
 class ReviewsScreen extends StatefulWidget {
   const ReviewsScreen({super.key});
@@ -14,8 +15,7 @@ class ReviewsScreen extends StatefulWidget {
 }
 
 class _ReviewsScreenState extends State<ReviewsScreen> {
-  final String _testUserId = 'test-user';
-  final String _testUserName = 'Utilisateur Test';
+
 
   Future<void> _openAddReview(Product product) async {
     final result = await Navigator.of(context).push<bool>(
@@ -23,8 +23,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
         builder: (_) => AddReviewScreen(
           productId: product.id,
           productName: product.name,
-          userId: _testUserId,
-          userName: _testUserName,
+          userId: CurrentUser.of(context).id,
+          userName: CurrentUser.of(context).fullName,
         ),
       ),
     );

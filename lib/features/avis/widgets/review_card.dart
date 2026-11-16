@@ -22,7 +22,7 @@ class ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final dateFormat = DateFormat('dd/MM/yyyy', 'fr_FR');
+    final dateFormat = DateFormat('dd/MM/yyyy');
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),

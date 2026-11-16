@@ -122,12 +122,14 @@ class _ProductReviewsState extends State<ProductReviews> {
             const Spacer(),
             if (_userReview == null)
               FilledButton.icon(
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
                 onPressed: _openAddReview,
                 icon: const Icon(Icons.star_outline, size: 18),
                 label: const Text('Laisser un avis'),
               )
             else
               OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
                 onPressed: _openEditReview,
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Modifier mon avis'),

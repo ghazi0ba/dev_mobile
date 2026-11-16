@@ -4,6 +4,9 @@ import 'package:dev_mobile/features/produits/services/product_service.dart';
 import 'package:dev_mobile/features/produits/screens/product_edit_screen.dart';
 import 'package:intl/intl.dart';
 
+import 'package:dev_mobile/features/avis/widgets/product_reviews.dart';
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
+
 /// Product detail screen with actions
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -189,231 +192,239 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product image
+            if (_product.imageUrl != null &&
+                _product.imageUrl!.isNotEmpty)
+              Image.network(
+                _product.imageUrl!,
+                width: double.infinity,
+                height: 300,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: double.infinity,
+                    height: 300,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.image_not_supported, size: 64),
+                  );
+                },
+              )
+            else
+              Container(
+                width: double.infinity,
+                height: 300,
+                color: Colors.grey[300],
+                child: const Icon(Icons.inventory_2_outlined, size: 64),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product image
-                  if (_product.imageUrl != null &&
-                      _product.imageUrl!.isNotEmpty)
-                    Image.network(
-                      _product.imageUrl!,
-                      width: double.infinity,
-                      height: 300,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: double.infinity,
-                          height: 300,
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image_not_supported, size: 64),
-                        );
-                      },
-                    )
-                  else
-                    Container(
-                      width: double.infinity,
-                      height: 300,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.inventory_2_outlined, size: 64),
+                  // Category
+                  Text(
+                    _categoryName.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1,
                     ),
+                  ),
+                  const SizedBox(height: 8),
 
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Category
-                        Text(
-                          _categoryName.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1,
-                          ),
+                  // Product name
+                  Text(
+                    _product.name,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Price and volume
+                  Row(
+                    children: [
+                      Text(
+                        formatter.format(_product.price),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
-                        const SizedBox(height: 8),
-
-                        // Product name
-                        Text(
-                          _product.name,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Price and volume
-                        Row(
-                          children: [
-                            Text(
-                              formatter.format(_product.price),
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                            if (_product.volume.isNotEmpty) ...[
-                              const SizedBox(width: 12),
-                              Chip(
-                                label: Text(_product.volume),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Stock info
-                        _StockInfo(stock: _product.stock),
-                        const SizedBox(height: 24),
-
-                        // Brand
-                        if (_product.brand.isNotEmpty) ...[
-                          const Text(
-                            'Marque',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _product.brand,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // SKU
-                        if (_product.sku.isNotEmpty) ...[
-                          const Text(
-                            'Référence (SKU)',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _product.sku,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // Description
-                        if (_product.description.isNotEmpty) ...[
-                          const Text(
-                            'Description',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _product.description,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // Composition
-                        if (_product.composition.isNotEmpty) ...[
-                          const Text(
-                            'Composition',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _product.composition,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // Labels
-                        if (_product.labels.isNotEmpty) ...[
-                          const Text(
-                            'Labels',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _product.labels
-                                .map((label) => Chip(label: Text(label)))
-                                .toList(),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        // Created at
-                        if (_product.createdAt != null) ...[
-                          Text(
-                            'Ajouté le ${DateFormat('dd/MM/yyyy').format(_product.createdAt!)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // Action buttons
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _adjustStock,
-                            icon: const Icon(Icons.add_circle_outline),
-                            label: const Text('Ajuster le stock'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _navigateToEdit,
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Modifier le produit'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: TextButton.icon(
-                            onPressed: _isLoading ? null : _deleteProduct,
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            label: const Text(
-                              'Supprimer le produit',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                          ),
+                      ),
+                      if (_product.volume.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        Chip(
+                          label: Text(_product.volume),
                         ),
                       ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Stock info
+                  _StockInfo(stock: _product.stock),
+                  const SizedBox(height: 24),
+
+                  // Brand
+                  if (_product.brand.isNotEmpty) ...[
+                    const Text(
+                      'Marque',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _product.brand,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // SKU
+                  if (_product.sku.isNotEmpty) ...[
+                    const Text(
+                      'Référence (SKU)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _product.sku,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Description
+                  if (_product.description.isNotEmpty) ...[
+                    const Text(
+                      'Description',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _product.description,
+                      style: const TextStyle(fontSize: 16, height: 1.5),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Composition
+                  if (_product.composition.isNotEmpty) ...[
+                    const Text(
+                      'Composition',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _product.composition,
+                      style: const TextStyle(fontSize: 16, height: 1.5),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Labels
+                  if (_product.labels.isNotEmpty) ...[
+                    const Text(
+                      'Labels',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _product.labels
+                          .map((label) => Chip(label: Text(label)))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Created at
+                  if (_product.createdAt != null) ...[
+                    Text(
+                      'Ajouté le ${DateFormat('dd/MM/yyyy').format(_product.createdAt!)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Avis (module Avis)
+                  ProductReviews(
+                    product: _product,
+                    userId: CurrentUser.of(context).id,
+                    userName: CurrentUser.of(context).fullName,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Action buttons
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _adjustStock,
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('Ajuster le stock'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _navigateToEdit,
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Modifier le produit'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: _isLoading ? null : _deleteProduct,
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text(
+                        'Supprimer le produit',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }
