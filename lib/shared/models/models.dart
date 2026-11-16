@@ -198,6 +198,44 @@ class Product {
   bool get inStock => stock > 0;
   bool get lowStock => stock > 0 && stock <= lowStockThreshold;
 
+  bool get isOutOfStock => stock == 0;
+
+  /// Copie avec des champs modifiés (utilisé par le module Produits).
+  Product copyWith({
+    String? id,
+    String? name,
+    double? price,
+    int? stock,
+    String? categoryId,
+    String? sku,
+    String? brand,
+    String? description,
+    String? composition,
+    String? volume,
+    String? imageUrl,
+    List<String>? labels,
+    double? ratingAverage,
+    int? ratingCount,
+    DateTime? createdAt,
+  }) =>
+      Product(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        price: price ?? this.price,
+        stock: stock ?? this.stock,
+        categoryId: categoryId ?? this.categoryId,
+        sku: sku ?? this.sku,
+        brand: brand ?? this.brand,
+        description: description ?? this.description,
+        composition: composition ?? this.composition,
+        volume: volume ?? this.volume,
+        imageUrl: imageUrl ?? this.imageUrl,
+        labels: labels ?? this.labels,
+        ratingAverage: ratingAverage ?? this.ratingAverage,
+        ratingCount: ratingCount ?? this.ratingCount,
+        createdAt: createdAt ?? this.createdAt,
+      );
+
   factory Product.fromMap(String id, Map<String, dynamic> map) => Product(
         id: id,
         name: map['name'] as String? ?? '',
