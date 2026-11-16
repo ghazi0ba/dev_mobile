@@ -4,7 +4,7 @@ Application mobile Flutter.
 
 ## Prérequis
 
-| Outil | Version |
+| Outil | Version |g
 |---|---|
 | Flutter (canal stable) | ** 3.47.9 ** (à remplacer par la sortie de `flutter --version`) |
 | Dart | ≥ 3.13.7 (inclus avec Flutter) |

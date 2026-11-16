@@ -167,8 +167,13 @@ class StatCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(value,
-                      style: AppTheme.serif(size: 28, weight: FontWeight.w700)),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(value,
+                        maxLines: 1,
+                        style: AppTheme.serif(size: 28, weight: FontWeight.w700)),
+                  ),
                 ),
                 ?badge,
               ],

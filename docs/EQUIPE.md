@@ -20,8 +20,7 @@ lib/
 ├── main.dart                 # démarrage + Firebase (ne pas toucher)
 ├── app/
 │   ├── shells.dart           # barres de navigation admin / client
-│   ├── home_screen.dart      # tableau de bord : écran d'exemple du thème
-│   └── dev_launcher.dart     # écran temporaire pour choisir admin/client
+│   └── home_screen.dart      # tableau de bord : écran d'exemple du thème
 ├── core/
 │   ├── theme/                # couleurs et thème (AppColors, AppTheme, AppSpacing)
 │   └── widgets/              # composants partagés (AppHeader, SectionCard, StatusBadge…)
@@ -64,7 +63,10 @@ Les modèles Dart correspondants sont dans `lib/shared/models/models.dart`.
 
 ```
 users/{uid}
-  email, fullName, role ("client" | "admin"), phone, address, photoUrl, createdAt
+  email, firstName, lastName, fullName (copie "Prénom Nom", calculée),
+  role ("client" | "admin"), phone, address, createdAt,
+  photoUrl (Cloudinary, null = initiales), photoPublicId,
+  disabled (bool : compte désactivé par un admin)
 
 categories/{id}
   name, imageUrl
@@ -74,12 +76,18 @@ products/{id}
   volume, imageUrl, labels ["bio","vegan","naturel"],
   ratingAverage, ratingCount, createdAt
 
+carts/{uid}
+  userId, customerName, customerEmail, itemCount, lineCount, estimatedTotal, updatedAt
+  (résumé tenu à jour par le module Panier, pour la vue admin)
+
 carts/{uid}/items/{productId}
   quantity, addedAt            # pas de prix : on le relit dans products
 
 orders/{id}
   userId, lines [{productId, name, unitPrice, quantity, imageUrl}],
-  total, shippingAddress, status, paymentMethod ("livraison"), createdAt
+  total, shippingAddress, customerName, customerEmail, customerPhone, note,
+  status, paymentMethod ("livraison"), stockReserved,
+  history [{status, at, by ("client" | "admin")}], createdAt, updatedAt
   status : "enAttente" | "confirmee" | "expediee" | "livree" | "annulee"
 
 reviews/{id}
@@ -90,14 +98,60 @@ reviews/{id}
 
 Mettez-vous d'accord tôt sur ces points de contact :
 
-- **Produits → Panier** : la fiche produit affiche un bouton « Ajouter au panier » fourni par le module Panier (ex. widget `AddToCartButton(productId: ...)` dans `features/panier/widgets/`).
+- **Produits → Panier** : la fiche produit (et les cartes produits) affichent le bouton du module Panier. Il vérifie le stock et se masque pour les admins :
+  ```dart
+  import 'package:dev_mobile/features/panier/widgets/cart_widgets.dart';
+
+  AddToCartButton(product: product)                 // bouton pleine largeur
+  AddToCartButton(product: product, compact: true)  // petite icône
+  ```
+  Pour un badge du nombre d'articles : `CartService.instance.watchItemCount(uid)`.
 - **Produits → Avis** : la fiche produit affiche les avis via un widget du module Avis (ex. `ProductReviews(productId: ...)` dans `features/avis/widgets/`).
-- **Panier → Commandes** : le bouton « Commander » du panier ouvre l'écran de validation du module Commandes et lui passe les articles.
-- **Commandes → Produits** : à la validation, le stock des produits est décrémenté dans une transaction Firestore.
+- **Panier → Commandes** : le panier est stocké dans `carts/{uid}/items/{productId}` avec un champ `quantity` (entier). Le bouton « Commander » du panier ouvre simplement :
+  ```dart
+  import 'package:dev_mobile/features/commandes/screens/checkout_screen.dart';
+
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+  );
+  ```
+  L'écran relit le panier, les prix et le stock dans Firestore, et vide les articles commandés une fois la commande passée.
+- **Commandes → Produits** : le stock n'est **pas** retiré quand le client commande, mais quand l'**admin confirme** la commande (transaction Firestore). Il est remis en stock si une commande confirmée ou expédiée est annulée. Champs produits utilisés : `name`, `price`, `stock`, `imageUrl`.
 - **Avis → Produits** : après un nouvel avis, `ratingAverage` et `ratingCount` du produit sont mis à jour.
-- **Utilisateurs → tous** : fournit l'utilisateur connecté (uid, nom, rôle). En attendant, utilisez un uid de test comme `'test-user'`.
+- **Utilisateurs → tous** : fournit l'utilisateur connecté (voir section 5 bis).
 
 Tant qu'un widget d'un autre module n'existe pas, mettez un simple bouton ou texte temporaire avec `// TODO`.
+
+## 5 bis. Utilisateur connecté et sécurité
+
+L'app démarre sur `AuthGate` : écran de connexion, puis espace admin ou client selon le rôle.
+
+```dart
+import 'package:dev_mobile/features/utilisateurs/widgets/current_user_scope.dart';
+
+final user = CurrentUser.of(context);      // AppUser : user.id, user.fullName, user.isAdmin…
+final maybe = CurrentUser.maybeOf(context); // null si personne n'est connecté
+```
+
+Utilisez `user.id` comme `userId` (commandes, avis, panier `carts/{user.id}`).
+Avatar (photo ou initiales) : `UserAvatar(user: user)` dans `features/utilisateurs/widgets/user_avatar.dart`.
+
+**Images (Cloudinary)** : `CloudinaryService.instance.uploadImage(bytes, folder: 'cosmaplus/products')`
+dans `lib/core/services/cloudinary_service.dart` retourne l'URL à enregistrer (ex. `imageUrl` d'un produit).
+Configuration (cloud name + preset non signé) : voir `docs/UTILISATEURS.md`, section 9.
+Détails complets du module Utilisateurs : `docs/UTILISATEURS.md`.
+
+**Comptes de test** : créez un compte depuis l'écran « Créer un compte ». Pour devenir admin,
+mettez `role: "admin"` sur votre document `users/{uid}` dans la console Firestore
+(ou demandez à un admin de vous nommer depuis « Gestion des utilisateurs »).
+
+Il n'y a plus de « mode développement » : pour tester un espace, connectez-vous avec un
+compte client ou admin.
+
+**Règles Firestore** : fichier `firestore.rules` à la racine. Chaque module complète le bloc
+de sa collection (les règles actuelles des autres modules sont provisoires : « tout utilisateur
+actif »). Déployer : `firebase deploy --only firestore:rules --project projetmobile-4csde2`
+ou copier-coller dans la console (Firestore > Règles).
 
 ## 6. Travailler avec Git
 

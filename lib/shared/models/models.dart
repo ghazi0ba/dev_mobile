@@ -24,45 +24,116 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.email,
-    required this.fullName,
+    required this.firstName,
+    required this.lastName,
     this.role = UserRole.client,
     this.phone,
     this.address,
     this.photoUrl,
+    this.photoPublicId,
     this.createdAt,
+    this.disabled = false,
   });
 
   final String id;
   final String email;
-  final String fullName;
+  final String firstName; // prénom
+  final String lastName; // nom
   final UserRole role;
   final String? phone;
   final String? address;
+
+  /// Photo de profil hébergée sur Cloudinary (null : on affiche les initiales).
   final String? photoUrl;
+
+  /// Identifiant Cloudinary de la photo (utile pour la supprimer plus tard).
+  final String? photoPublicId;
   final DateTime? createdAt;
 
-  bool get isAdmin => role == UserRole.admin;
+  /// Compte désactivé par un admin : l'utilisateur ne peut plus utiliser l'app.
+  final bool disabled;
 
-  factory AppUser.fromMap(String id, Map<String, dynamic> map) => AppUser(
-        id: id,
-        email: map['email'] as String? ?? '',
-        fullName: map['fullName'] as String? ?? '',
-        role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
-        phone: map['phone'] as String?,
-        address: map['address'] as String?,
-        photoUrl: map['photoUrl'] as String?,
-        createdAt: _toDate(map['createdAt']),
-      );
+  /// "Prénom Nom" : à utiliser pour l'affichage (ex. userName d'un avis).
+  String get fullName => '$firstName $lastName'.trim();
+
+  bool get isAdmin => role == UserRole.admin;
+  bool get hasPhoto => (photoUrl ?? '').isNotEmpty;
+
+  /// Prénom ET nom renseignés (obligatoire pour utiliser l'app).
+  bool get hasCompleteName =>
+      firstName.trim().isNotEmpty && lastName.trim().isNotEmpty;
+
+  /// "Marie Claire Dupont" → ("Marie", "Claire Dupont").
+  /// Un seul mot → (mot, "") : le nom reste à compléter.
+  static (String, String) splitFullName(String fullName) {
+    final parts = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return ('', '');
+    return (parts.first, parts.skip(1).join(' '));
+  }
+
+  AppUser copyWith({
+    String? email,
+    String? firstName,
+    String? lastName,
+    UserRole? role,
+    String? phone,
+    String? address,
+    String? photoUrl,
+    String? photoPublicId,
+    bool? disabled,
+  }) => AppUser(
+    id: id,
+    email: email ?? this.email,
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    role: role ?? this.role,
+    phone: phone ?? this.phone,
+    address: address ?? this.address,
+    photoUrl: photoUrl ?? this.photoUrl,
+    photoPublicId: photoPublicId ?? this.photoPublicId,
+    createdAt: createdAt,
+    disabled: disabled ?? this.disabled,
+  );
+
+  factory AppUser.fromMap(String id, Map<String, dynamic> map) {
+    var first = map['firstName'] as String?;
+    var last = map['lastName'] as String?;
+    // Anciens documents : seulement "fullName" → on le découpe.
+    if (first == null && last == null) {
+      (first, last) = splitFullName(map['fullName'] as String? ?? '');
+    }
+    return AppUser(
+      id: id,
+      email: map['email'] as String? ?? '',
+      firstName: first ?? '',
+      lastName: last ?? '',
+      role: map['role'] == 'admin' ? UserRole.admin : UserRole.client,
+      phone: map['phone'] as String?,
+      address: map['address'] as String?,
+      photoUrl: map['photoUrl'] as String?,
+      photoPublicId: map['photoPublicId'] as String?,
+      createdAt: _toDate(map['createdAt']),
+      disabled: map['disabled'] == true,
+    );
+  }
 
   Map<String, dynamic> toMap() => {
-        'email': email,
-        'fullName': fullName,
-        'role': role.name,
-        'phone': phone,
-        'address': address,
-        'photoUrl': photoUrl,
-        'createdAt': createdAt ?? DateTime.now(),
-      };
+    'email': email,
+    'firstName': firstName,
+    'lastName': lastName,
+    'fullName': fullName, // copie pratique pour la console / les autres modules
+    'role': role.name,
+    'phone': phone,
+    'address': address,
+    'photoUrl': photoUrl,
+    'photoPublicId': photoPublicId,
+    'createdAt': createdAt ?? DateTime.now(),
+    'disabled': disabled,
+  };
 }
 
 // ─── Produits & catégories (propriétaire : module Produits) ─────────────────
@@ -126,6 +197,44 @@ class Product {
 
   bool get inStock => stock > 0;
   bool get lowStock => stock > 0 && stock <= lowStockThreshold;
+
+  bool get isOutOfStock => stock == 0;
+
+  /// Copie avec des champs modifiés (utilisé par le module Produits).
+  Product copyWith({
+    String? id,
+    String? name,
+    double? price,
+    int? stock,
+    String? categoryId,
+    String? sku,
+    String? brand,
+    String? description,
+    String? composition,
+    String? volume,
+    String? imageUrl,
+    List<String>? labels,
+    double? ratingAverage,
+    int? ratingCount,
+    DateTime? createdAt,
+  }) =>
+      Product(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        price: price ?? this.price,
+        stock: stock ?? this.stock,
+        categoryId: categoryId ?? this.categoryId,
+        sku: sku ?? this.sku,
+        brand: brand ?? this.brand,
+        description: description ?? this.description,
+        composition: composition ?? this.composition,
+        volume: volume ?? this.volume,
+        imageUrl: imageUrl ?? this.imageUrl,
+        labels: labels ?? this.labels,
+        ratingAverage: ratingAverage ?? this.ratingAverage,
+        ratingCount: ratingCount ?? this.ratingCount,
+        createdAt: createdAt ?? this.createdAt,
+      );
 
   factory Product.fromMap(String id, Map<String, dynamic> map) => Product(
         id: id,
@@ -191,6 +300,57 @@ class CartItem {
       };
 }
 
+/// Document `carts/{uid}` : résumé du panier, tenu à jour par le module Panier.
+/// Sert à l'admin pour lister les paniers en cours sans tout relire.
+class CartSummary {
+  const CartSummary({
+    required this.userId,
+    this.customerName = '',
+    this.customerEmail = '',
+    this.itemCount = 0,
+    this.lineCount = 0,
+    this.estimatedTotal = 0,
+    this.updatedAt,
+  });
+
+  final String userId;
+  final String customerName;
+  final String customerEmail;
+
+  /// Nombre total d'unités (somme des quantités).
+  final int itemCount;
+
+  /// Nombre de produits différents.
+  final int lineCount;
+
+  /// Total au prix du moment de la dernière modification.
+  final double estimatedTotal;
+  final DateTime? updatedAt;
+
+  bool get isEmpty => itemCount == 0;
+
+  factory CartSummary.fromMap(String userId, Map<String, dynamic> map) =>
+      CartSummary(
+        userId: userId,
+        customerName: map['customerName'] as String? ?? '',
+        customerEmail: map['customerEmail'] as String? ?? '',
+        itemCount: _toInt(map['itemCount']),
+        lineCount: _toInt(map['lineCount']),
+        estimatedTotal: _toDouble(map['estimatedTotal']),
+        updatedAt: _toDate(map['updatedAt']),
+      );
+
+  Map<String, dynamic> toMap() => {
+        'userId': userId,
+        'customerName': customerName,
+        'customerEmail': customerEmail,
+        'itemCount': itemCount,
+        'lineCount': lineCount,
+        'estimatedTotal': estimatedTotal,
+        'updatedAt': updatedAt ?? DateTime.now(),
+      };
+}
+
 // ─── Commandes (propriétaire : module Commandes) ────────────────────────────
 
 enum OrderStatus { enAttente, confirmee, expediee, livree, annulee }
@@ -241,6 +401,33 @@ class OrderLine {
       };
 }
 
+/// Événement de l'historique d'une commande (changement de statut).
+class OrderEvent {
+  const OrderEvent({required this.status, required this.at, this.by = ''});
+
+  final OrderStatus status;
+  final DateTime at;
+  final String by; // "client" ou "admin"
+
+  factory OrderEvent.fromMap(Map<String, dynamic> map) => OrderEvent(
+        status: orderStatusFromName(map['status'] as String?),
+        at: _toDate(map['at']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+        by: map['by'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'status': status.name,
+        'at': at,
+        'by': by,
+      };
+}
+
+/// Lit un statut stocké dans Firestore ("enAttente", "confirmee"…).
+OrderStatus orderStatusFromName(String? name) => OrderStatus.values.firstWhere(
+      (s) => s.name == name,
+      orElse: () => OrderStatus.enAttente,
+    );
+
 /// Collection `orders/{id}`.
 class CustomerOrder {
   const CustomerOrder({
@@ -249,9 +436,16 @@ class CustomerOrder {
     required this.lines,
     required this.total,
     required this.shippingAddress,
+    this.customerName = '',
+    this.customerEmail = '',
+    this.customerPhone = '',
+    this.note = '',
     this.status = OrderStatus.enAttente,
     this.paymentMethod = 'livraison', // paiement à la livraison
+    this.stockReserved = false,
+    this.history = const [],
     this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
@@ -259,9 +453,33 @@ class CustomerOrder {
   final List<OrderLine> lines;
   final double total;
   final String shippingAddress;
+
+  /// Copie des infos du client au moment de la commande (pour l'admin).
+  final String customerName;
+  final String customerEmail;
+  final String customerPhone;
+
+  /// Instructions de livraison facultatives.
+  final String note;
+
   final OrderStatus status;
   final String paymentMethod;
+
+  /// true quand le stock des produits a été retiré (à la confirmation).
+  final bool stockReserved;
+
+  /// Changements de statut, du plus ancien au plus récent.
+  final List<OrderEvent> history;
+
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  /// Numéro court affiché à l'écran : "#A1B2C3".
+  String get shortId =>
+      '#${(id.length > 6 ? id.substring(0, 6) : id).toUpperCase()}';
+
+  /// Nombre total d'articles.
+  int get itemCount => lines.fold(0, (sum, l) => sum + l.quantity);
 
   factory CustomerOrder.fromMap(String id, Map<String, dynamic> map) =>
       CustomerOrder(
@@ -272,12 +490,18 @@ class CustomerOrder {
             .toList(),
         total: _toDouble(map['total']),
         shippingAddress: map['shippingAddress'] as String? ?? '',
-        status: OrderStatus.values.firstWhere(
-          (s) => s.name == map['status'],
-          orElse: () => OrderStatus.enAttente,
-        ),
+        customerName: map['customerName'] as String? ?? '',
+        customerEmail: map['customerEmail'] as String? ?? '',
+        customerPhone: map['customerPhone'] as String? ?? '',
+        note: map['note'] as String? ?? '',
+        status: orderStatusFromName(map['status'] as String?),
         paymentMethod: map['paymentMethod'] as String? ?? 'livraison',
+        stockReserved: map['stockReserved'] == true,
+        history: (map['history'] as List? ?? const [])
+            .map((e) => OrderEvent.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList(),
         createdAt: _toDate(map['createdAt']),
+        updatedAt: _toDate(map['updatedAt']),
       );
 
   Map<String, dynamic> toMap() => {
@@ -285,9 +509,16 @@ class CustomerOrder {
         'lines': lines.map((l) => l.toMap()).toList(),
         'total': total,
         'shippingAddress': shippingAddress,
+        'customerName': customerName,
+        'customerEmail': customerEmail,
+        'customerPhone': customerPhone,
+        'note': note,
         'status': status.name,
         'paymentMethod': paymentMethod,
+        'stockReserved': stockReserved,
+        'history': history.map((e) => e.toMap()).toList(),
         'createdAt': createdAt ?? DateTime.now(),
+        'updatedAt': updatedAt ?? DateTime.now(),
       };
 }
 
