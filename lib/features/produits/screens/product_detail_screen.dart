@@ -34,8 +34,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _loadCategory() async {
     try {
       final categories = await _productService.getAllCategories();
-      final category =
-          categories.where((c) => c.id == _product.categoryId).firstOrNull;
+      final category = categories
+          .where((c) => c.id == _product.categoryId)
+          .firstOrNull;
       setState(() {
         _categoryName = category?.name ?? 'Sans catégorie';
       });
@@ -85,9 +86,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
         setState(() {
           _isLoading = false;
         });
@@ -143,15 +143,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _product = _product.copyWith(stock: newStock);
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stock mis à jour')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Stock mis à jour')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erreur: $e')));
       }
     }
   }
@@ -197,246 +195,329 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product image
-            if (_product.imageUrl != null &&
-                _product.imageUrl!.isNotEmpty)
-              Image.network(
-                _product.imageUrl!,
-                width: double.infinity,
-                height: 300,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: double.infinity,
-                    height: 300,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported, size: 64),
-                  );
-                },
-              )
-            else
-              Container(
-                width: double.infinity,
-                height: 300,
-                color: Colors.grey[300],
-                child: const Icon(Icons.inventory_2_outlined, size: 64),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category
-                  Text(
-                    _categoryName.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Product name
-                  Text(
-                    _product.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Price and volume
-                  Row(
-                    children: [
-                      Text(
-                        formatter.format(_product.price),
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      if (_product.volume.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        Chip(
-                          label: Text(_product.volume),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Stock info
-                  _StockInfo(stock: _product.stock),
-                  const SizedBox(height: 24),
-
-                  // Brand
-                  if (_product.brand.isNotEmpty) ...[
-                    const Text(
-                      'Marque',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _product.brand,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // SKU
-                  if (_product.sku.isNotEmpty) ...[
-                    const Text(
-                      'Référence (SKU)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _product.sku,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Description
-                  if (_product.description.isNotEmpty) ...[
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _product.description,
-                      style: const TextStyle(fontSize: 16, height: 1.5),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Composition
-                  if (_product.composition.isNotEmpty) ...[
-                    const Text(
-                      'Composition',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _product.composition,
-                      style: const TextStyle(fontSize: 16, height: 1.5),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Labels
-                  if (_product.labels.isNotEmpty) ...[
-                    const Text(
-                      'Labels',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _product.labels
-                          .map((label) => Chip(label: Text(label)))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Created at
-                  if (_product.createdAt != null) ...[
-                    Text(
-                      'Ajouté le ${DateFormat('dd/MM/yyyy').format(_product.createdAt!)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Avis (module Avis)
-                  ProductReviews(
-                    product: _product,
-                    userId: CurrentUser.of(context).id,
-                    userName: CurrentUser.of(context).fullName,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Client : ajout au panier. Admin : gestion du produit.
-                  if (!isAdmin)
-                    SizedBox(
+                  // Product image
+                  if (_product.imageUrl != null &&
+                      _product.imageUrl!.isNotEmpty)
+                    Image.network(
+                      _product.imageUrl!,
                       width: double.infinity,
-                      child: AddToCartButton(product: _product),
+                      height: 300,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: double.infinity,
+                          height: 300,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            size: 64,
+                          ),
+                        );
+                      },
                     )
-                  else ...[
-                    SizedBox(
+                  else
+                    Container(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _adjustStock,
-                        icon: const Icon(Icons.add_circle_outline),
-                        label: const Text('Ajuster le stock'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
+                      height: 300,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.inventory_2_outlined, size: 64),
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _navigateToEdit,
-                        icon: const Icon(Icons.edit),
-                        label: const Text('Modifier le produit'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Category
+                        Text(
+                          _categoryName.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+
+                        // Product name
+                        Text(
+                          _product.name,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Price and volume
+                        Row(
+                          children: [
+                            Text(
+                              formatter.format(_product.price),
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            if (_product.volume.isNotEmpty) ...[
+                              const SizedBox(width: 12),
+                              Chip(label: Text(_product.volume)),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Stock info
+                        _StockInfo(stock: _product.stock),
+                        const SizedBox(height: 24),
+
+                        // Brand
+                        if (_product.brand.isNotEmpty) ...[
+                          const Text(
+                            'Marque',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _product.brand,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // SKU
+                        if (_product.sku.isNotEmpty) ...[
+                          const Text(
+                            'Référence (SKU)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _product.sku,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Description
+                        if (_product.description.isNotEmpty) ...[
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _product.description,
+                            style: const TextStyle(fontSize: 16, height: 1.5),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Composition
+                        if (_product.composition.isNotEmpty) ...[
+                          const Text(
+                            'Composition',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _product.composition,
+                            style: const TextStyle(fontSize: 16, height: 1.5),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Labels
+                        if (_product.labels.isNotEmpty) ...[
+                          const Text(
+                            'Labels',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _product.labels
+                                .map((label) => Chip(label: Text(label)))
+                                .toList(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Expiry Date
+                        if (_product.expiryDate != null) ...[
+                          const Text(
+                            'Date de péremption',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _product.isExpired
+                                  ? Colors.red.withOpacity(0.1)
+                                  : _product.isExpiringsoon
+                                  ? Colors.orange.withOpacity(0.1)
+                                  : Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _product.isExpired
+                                    ? Colors.red
+                                    : _product.isExpiringsoon
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _product.isExpired
+                                      ? Icons.error
+                                      : _product.isExpiringsoon
+                                      ? Icons.warning
+                                      : Icons.check_circle,
+                                  color: _product.isExpired
+                                      ? Colors.red
+                                      : _product.isExpiringsoon
+                                      ? Colors.orange
+                                      : Colors.green,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        DateFormat('dd/MM/yyyy')
+                                            .format(_product.expiryDate!),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _product.isExpired
+                                            ? 'Produit expiré (${-_product.daysUntilExpiry!} jours)'
+                                            : _product.isExpiringsoon
+                                            ? 'Expire dans ${_product.daysUntilExpiry} jours'
+                                            : 'Expire dans ${_product.daysUntilExpiry} jours',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Created at
+                        if (_product.createdAt != null) ...[
+                          Text(
+                            'Ajouté le ${DateFormat('dd/MM/yyyy').format(_product.createdAt!)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Avis (module Avis)
+                        ProductReviews(
+                          product: _product,
+                          userId: CurrentUser.of(context).id,
+                          userName: CurrentUser.of(context).fullName,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Client : ajout au panier. Admin : gestion du produit.
+                        if (!isAdmin)
+                          SizedBox(
+                            width: double.infinity,
+                            child: AddToCartButton(product: _product),
+                          )
+                        else ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _adjustStock,
+                              icon: const Icon(Icons.add_circle_outline),
+                              label: const Text('Ajuster le stock'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _navigateToEdit,
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Modifier le produit'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton.icon(
+                              onPressed: _isLoading ? null : _deleteProduct,
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              label: const Text(
+                                'Supprimer le produit',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: _isLoading ? null : _deleteProduct,
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        label: const Text(
-                          'Supprimer le produit',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
