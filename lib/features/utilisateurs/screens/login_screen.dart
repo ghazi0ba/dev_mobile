@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:dev_mobile/core/widgets/widgets.dart';
 
-/// Écran de connexion (maquette "Espace Admin").
-/// Module Utilisateurs : brancher Firebase Auth dans [_submit].
+/// Écran de connexion avec Firebase Auth.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.onLoggedIn});
 
-  /// Appelé après une connexion réussie (temporaire, en attendant l'AuthGate).
+  /// Appelé après une connexion réussie.
   final VoidCallback? onLoggedIn;
 
   @override
@@ -20,6 +20,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _remember = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,15 +30,40 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO(module Utilisateurs) : FirebaseAuth.instance.signInWithEmailAndPassword(...)
-    widget.onLoggedIn?.call();
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _email.text.trim(),
+        password: _password.text.trim(),
+      );
+      widget.onLoggedIn?.call();
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = switch (e.code) {
+          'user-not-found' => 'Aucun compte avec cet email',
+          'wrong-password' => 'Mot de passe incorrect',
+          'invalid-email' => 'Email invalide',
+          'user-disabled' => 'Compte désactivé',
+          'too-many-requests' => 'Trop de tentatives. Réessayez plus tard',
+          _ => 'Erreur de connexion: ${e.message}',
+        };
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -89,8 +116,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: Text('Mot de passe',
                                     style: text.labelLarge)),
                             GestureDetector(
-                              onTap: () {
-                                // TODO(module Utilisateurs) : sendPasswordResetEmail
+                              onTap: () async {
+                                final email = _email.text.trim();
+                                if (email.isEmpty || !email.contains('@')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Entrez votre email d\'abord')),
+                                  );
+                                  return;
+                                }
+                                final messenger = ScaffoldMessenger.of(context);
+                                try {
+                                  await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                                  if (mounted) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Email de réinitialisation envoyé')),
+                                    );
+                                  }
+                                } on FirebaseAuthException catch (e) {
+                                  if (mounted) {
+                                    messenger.showSnackBar(
+                                      SnackBar(content: Text('Erreur: ${e.message}')),
+                                    );
+                                  }
+                                }
                               },
                               child: Text(
                                 'Mot de passe oublié ?',
@@ -131,16 +179,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        FilledButton(
-                          onPressed: _submit,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('Se connecter'),
-                              SizedBox(width: AppSpacing.sm),
-                              Icon(Icons.arrow_forward, size: 18),
-                            ],
+                        if (_errorMessage != null) ...[
+                          Text(
+                            _errorMessage!,
+                            style: text.bodySmall?.copyWith(color: AppColors.error),
                           ),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                        FilledButton(
+                          onPressed: _isLoading ? null : _submit,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Se connecter'),
+                                    SizedBox(width: AppSpacing.sm),
+                                    Icon(Icons.arrow_forward, size: 18),
+                                  ],
+                                ),
                         ),
                       ],
                     ),

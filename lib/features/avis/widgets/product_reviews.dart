@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:dev_mobile/core/widgets/widgets.dart';
 import 'package:dev_mobile/features/avis/screens/add_review_screen.dart';
 import 'package:dev_mobile/features/avis/screens/edit_review_screen.dart';
@@ -12,14 +15,10 @@ class ProductReviews extends StatefulWidget {
   const ProductReviews({
     super.key,
     required this.product,
-    this.userId = 'test-user',
-    this.userName = 'Utilisateur Test',
     this.maxReviewsToShow = 3,
   });
 
   final Product product;
-  final String userId;
-  final String userName;
   final int maxReviewsToShow;
 
   @override
@@ -28,17 +27,49 @@ class ProductReviews extends StatefulWidget {
 
 class _ProductReviewsState extends State<ProductReviews> {
   Review? _userReview;
+  String? _currentUserId;
+  bool _isLoadingUser = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserReview();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _currentUserId = null;
+        _isLoadingUser = false;
+      });
+      return;
+    }
+
+    _currentUserId = user.uid;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      // _currentUserName is set but not used directly in this widget
+    } catch (e) {
+      // Ignore errors
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingUser = false);
+        _loadUserReview();
+      }
+    }
   }
 
   Future<void> _loadUserReview() async {
+    if (_currentUserId == null) {
+      setState(() => _userReview = null);
+      return;
+    }
+
     final review = await ReviewService.getUserReviewForProduct(
       widget.product.id,
-      widget.userId,
+      _currentUserId!,
     );
     if (mounted) {
       setState(() => _userReview = review);
@@ -51,8 +82,6 @@ class _ProductReviewsState extends State<ProductReviews> {
         builder: (_) => AddReviewScreen(
           productId: widget.product.id,
           productName: widget.product.name,
-          userId: widget.userId,
-          userName: widget.userName,
         ),
       ),
     );
@@ -92,6 +121,10 @@ class _ProductReviewsState extends State<ProductReviews> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
 
+    if (_isLoadingUser) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -120,7 +153,9 @@ class _ProductReviewsState extends State<ProductReviews> {
               ],
             ),
             const Spacer(),
-            if (_userReview == null)
+            if (_currentUserId == null)
+              Text('Connectez-vous pour laisser un avis', style: text.bodyMedium)
+            else if (_userReview == null)
               FilledButton.icon(
                 onPressed: _openAddReview,
                 icon: const Icon(Icons.star_outline, size: 18),

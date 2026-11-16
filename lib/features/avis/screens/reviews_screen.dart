@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:dev_mobile/core/widgets/widgets.dart';
 import 'package:dev_mobile/features/avis/screens/add_review_screen.dart';
 import 'package:dev_mobile/features/avis/screens/edit_review_screen.dart';
@@ -14,17 +17,52 @@ class ReviewsScreen extends StatefulWidget {
 }
 
 class _ReviewsScreenState extends State<ReviewsScreen> {
-  final String _testUserId = 'test-user';
-  final String _testUserName = 'Utilisateur Test';
+  String? _currentUserId;
+  bool _isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _currentUserId = null;
+        _isLoadingUser = false;
+      });
+      return;
+    }
+
+    _currentUserId = user.uid;
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        // _currentUserName is fetched but not used directly in this screen
+      }
+    } catch (e) {
+      // Ignore errors
+    } finally {
+      if (mounted) setState(() => _isLoadingUser = false);
+    }
+  }
 
   Future<void> _openAddReview(Product product) async {
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connectez-vous pour laisser un avis')),
+      );
+      return;
+    }
+
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddReviewScreen(
           productId: product.id,
           productName: product.name,
-          userId: _testUserId,
-          userName: _testUserName,
         ),
       ),
     );
@@ -55,6 +93,13 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+
+    if (_isLoadingUser) {
+      return const Scaffold(
+        appBar: AppHeader(subtitle: 'Avis'),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: const AppHeader(subtitle: 'Avis'),
@@ -126,59 +171,70 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              SectionCard(
-                title: 'Tester l\'ajout d\'avis',
-                icon: Icons.add_circle_outline,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Sélectionnez un produit pour tester l\'ajout d\'avis :',
-                      style: text.bodyMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        _TestProductChip(
-                          label: 'Sérum Vitamine C',
-                          productId: 'test-product-1',
-                          onTap: () => _openAddReview(Product(
-                            id: 'test-product-1',
-                            name: 'Sérum Vitamine C',
-                            price: 29.90,
-                            stock: 10,
-                            categoryId: 'cat-1',
-                          )),
-                        ),
-                        _TestProductChip(
-                          label: 'Crème Hydratante',
-                          productId: 'test-product-2',
-                          onTap: () => _openAddReview(Product(
-                            id: 'test-product-2',
-                            name: 'Crème Hydratante',
-                            price: 24.50,
-                            stock: 15,
-                            categoryId: 'cat-1',
-                          )),
-                        ),
-                        _TestProductChip(
-                          label: 'Huile Visage Bio',
-                          productId: 'test-product-3',
-                          onTap: () => _openAddReview(Product(
-                            id: 'test-product-3',
-                            name: 'Huile Visage Bio',
-                            price: 34.90,
-                            stock: 8,
-                            categoryId: 'cat-1',
-                          )),
-                        ),
-                      ],
-                    ),
-                  ],
+              if (_currentUserId != null) ...[
+                SectionCard(
+                  title: 'Tester l\'ajout d\'avis',
+                  icon: Icons.add_circle_outline,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sélectionnez un produit pour tester l\'ajout d\'avis :',
+                        style: text.bodyMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          _TestProductChip(
+                            label: 'Sérum Vitamine C',
+                            productId: 'test-product-1',
+                            onTap: () => _openAddReview(Product(
+                              id: 'test-product-1',
+                              name: 'Sérum Vitamine C',
+                              price: 29.90,
+                              stock: 10,
+                              categoryId: 'cat-1',
+                            )),
+                          ),
+                          _TestProductChip(
+                            label: 'Crème Hydratante',
+                            productId: 'test-product-2',
+                            onTap: () => _openAddReview(Product(
+                              id: 'test-product-2',
+                              name: 'Crème Hydratante',
+                              price: 24.50,
+                              stock: 15,
+                              categoryId: 'cat-1',
+                            )),
+                          ),
+                          _TestProductChip(
+                            label: 'Huile Visage Bio',
+                            productId: 'test-product-3',
+                            onTap: () => _openAddReview(Product(
+                              id: 'test-product-3',
+                              name: 'Huile Visage Bio',
+                              price: 34.90,
+                              stock: 8,
+                              categoryId: 'cat-1',
+                            )),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ] else ...[
+                SectionCard(
+                  title: 'Connexion requise',
+                  icon: Icons.lock_outline,
+                  child: Text(
+                    'Connectez-vous pour laisser un avis',
+                    style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
             ],
           );
         },

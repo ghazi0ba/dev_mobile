@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'app/dev_launcher.dart';
+import 'app/auth_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 
@@ -22,8 +22,7 @@ class CosmaPlusApp extends StatelessWidget {
       title: 'CosmaPlus',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      // TODO(module Utilisateurs) : remplacer DevLauncher par l'AuthGate.
-      home: const DevLauncher(),
+      home: const AuthGate(),
     );
   }
 }

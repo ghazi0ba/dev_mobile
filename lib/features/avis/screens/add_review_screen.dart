@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:dev_mobile/core/widgets/widgets.dart';
 import 'package:dev_mobile/features/avis/services/services.dart';
 import 'package:dev_mobile/features/avis/widgets/widgets.dart';
@@ -9,15 +12,11 @@ class AddReviewScreen extends StatefulWidget {
     super.key,
     required this.productId,
     required this.productName,
-    this.userId = 'test-user',
-    this.userName = 'Utilisateur Test',
     this.onReviewAdded,
   });
 
   final String productId;
   final String productName;
-  final String userId;
-  final String userName;
   final VoidCallback? onReviewAdded;
 
   @override
@@ -30,6 +29,13 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
   int _rating = 0;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
 
   @override
   void dispose() {
@@ -37,10 +43,36 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
     super.dispose();
   }
 
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _userName = 'Utilisateur');
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() => _userName = data['fullName'] as String? ?? user.displayName ?? 'Utilisateur');
+      } else {
+        setState(() => _userName = user.displayName ?? user.email?.split('@').first ?? 'Utilisateur');
+      }
+    } catch (e) {
+      setState(() => _userName = user.displayName ?? user.email?.split('@').first ?? 'Utilisateur');
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_rating == 0) {
       setState(() => _errorMessage = 'Veuillez sélectionner une note');
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _errorMessage = 'Utilisateur non connecté');
       return;
     }
 
@@ -53,8 +85,8 @@ class _AddReviewScreenState extends State<AddReviewScreen> {
       final review = Review(
         id: '',
         productId: widget.productId,
-        userId: widget.userId,
-        userName: widget.userName,
+        userId: user.uid,
+        userName: _userName ?? 'Utilisateur',
         rating: _rating,
         comment: _commentController.text.trim(),
         createdAt: DateTime.now(),
