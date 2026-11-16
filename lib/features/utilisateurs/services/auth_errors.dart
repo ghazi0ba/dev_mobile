@@ -21,7 +21,7 @@ String messageForErrorCode(String code) => switch (code) {
   'invalid-credential' ||
   'INVALID_LOGIN_CREDENTIALS' => 'Email ou mot de passe incorrect.',
   'email-already-in-use' => 'Un compte existe déjà avec cet email.',
-  'weak-password' => 'Mot de passe trop faible (6 caractères minimum).',
+  'weak-password' => 'Mot de passe trop faible (8 caractères, majuscule, minuscule, chiffre et caractère spécial).',
   'too-many-requests' => 'Trop de tentatives. Réessayez dans quelques minutes.',
   'network-request-failed' ||
   'unavailable' => 'Pas de connexion internet. Vérifiez votre réseau.',

@@ -185,6 +185,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: AppSpacing.sm),
                           PasswordField(
                             controller: _password,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Mot de passe requis'
+                                : null,
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => _submit(),
                           ),

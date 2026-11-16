@@ -46,12 +46,19 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   }
 
   void _generatePassword() {
-    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const special = '!@#\$%&*?-_';
+    const all = lower + upper + digits + special;
     final rnd = Random.secure();
-    _password.text = List.generate(
-      10,
-      (_) => chars[rnd.nextInt(chars.length)],
-    ).join();
+    String pick(String set) => set[rnd.nextInt(set.length)];
+    // Garantit une majuscule, une minuscule, un chiffre et un spécial.
+    final chars = [
+      pick(lower), pick(upper), pick(digits), pick(special),
+      for (var i = 0; i < 8; i++) pick(all),
+    ]..shuffle(rnd);
+    _password.text = chars.join();
   }
 
   Future<void> _submit() async {
